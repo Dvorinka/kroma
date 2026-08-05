@@ -1,0 +1,155 @@
+name: Supply chain
+
+# The dependency-provenance half of security scanning. codeql.yml covers the
+# code we write (CodeQL) and the crates we pull (cargo-audit); this covers the
+# things that reach a runner WITHOUT anyone reviewing a diff:
+#   - the npm graph, which no human reads and which install scripts execute
+#   - the workflows themselves, where a stolen token becomes a release
+#   - the action pins, the one control that held during tj-actions
+#
+# Scheduled as well as per-PR: a dependency is compromised on the attacker's
+# clock, not on ours, and the tree that was clean at merge is the tree that
+# ships weeks later.
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.claude/**'
+      - 'LICENSE'
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.claude/**'
+      - 'LICENSE'
+  schedule:
+    - cron: '0 7 * * 1' # Monday 07:00 UTC, an hour after codeql.yml
+  workflow_dispatch:
+
+concurrency:
+  group: supply-chain-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  BUN_VERSION: '1.3.14'
+
+jobs:
+  # The only gating job here, because it is the only one that is green today and
+  # the only one whose failure is unambiguous: a pin that no longer resolves
+  # upstream is either forged or rewritten, and there is no benign reading of it.
+  action-pins:
+    name: Action pins resolve upstream
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - run: bun .github/scripts/verify-action-pins.ts
+
+  # `bun audit` reads bun.lock directly, so it sees the whole resolved graph
+  # without an install - which also means no install script runs to produce the
+  # finding. Informational for the same reason cargo-audit is: today's hits are
+  # transitive (undici via wrangler, shell-quote via the Expo tree) with no fix
+  # we control. Tighten to a gate once the tree is triaged.
+  npm-advisories:
+    name: bun audit (npm advisories)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - name: Audit the npm graph
+        run: bun audit || echo "::warning title=bun audit::advisories found (transitive; see the step log)"
+
+  # No dependency in the tree may declare an install-time script that bun would
+  # run unreviewed. Every 2025-26 npm worm (Shai-Hulud and its variants) executes
+  # from preinstall/install/postinstall, so a NEW entry appearing here is the
+  # signal worth reading, not the count.
+  install-scripts:
+    name: Install-script inventory
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - run: bun install --frozen-lockfile
+      # `bun pm untrusted` lists what bun BLOCKED. Anything it names ran nothing,
+      # but it is also the review queue: a package that starts wanting an install
+      # hook is a package whose release process changed.
+      - name: Report blocked install scripts
+        run: bun pm untrusted
+
+  # zizmor reads the workflows as an attacker would: which inputs reach a `run`
+  # block, which jobs inherit more token than they use, which caches a release
+  # job trusts. Needs a token for its online audits (tag/ref resolution).
+  workflow-audit:
+    name: zizmor (workflow audit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Audit the workflows
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          pipx install zizmor==1.29.0
+          zizmor --min-severity=high --format=plain .github/workflows/ \
+            || echo "::warning title=zizmor::workflow findings (see the step log)"
+
+  # Snyk adds its own advisory database and reachability analysis on top of the
+  # OSV/GHSA data the other jobs use. It needs a real dependency tree, and it
+  # needs a token: no SNYK_TOKEN (forks, or before the secret is set) means the
+  # job reports that and stops rather than failing the run.
+  snyk:
+    name: Snyk (dependency scan)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Check for a Snyk token
+        id: gate
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          if [ -n "$SNYK_TOKEN" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Snyk::skipped - no SNYK_TOKEN secret is set for this repository"
+          fi
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        if: steps.gate.outputs.ready == 'true'
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - name: Install dependencies
+        if: steps.gate.outputs.ready == 'true'
+        run: bun install --frozen-lockfile
+      - name: Scan
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          bun x snyk@1.1306.2 test --all-projects --detection-depth=4 --severity-threshold=high \
+            || echo "::warning title=snyk::issues found (see the step log)"
