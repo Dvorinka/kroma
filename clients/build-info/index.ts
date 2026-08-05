@@ -63,10 +63,19 @@ export function productVersion(repoRoot: string): string | null {
   }
 }
 
+// CI checks the commit out fresh, then stamps app.json and generates the native
+// projects before the bundler reads any of this — dirt of the build's own
+// making. Only a developer's checkout can hold the uncommitted work this flag
+// exists to warn about.
+function workingTreeDirty(projectRoot: string): boolean {
+  return process.env.CI ? false : Boolean(git('status --porcelain', projectRoot));
+}
+
 /**
  * Collect the metadata for the client rooted at `projectRoot` (from an
  * app.config.ts, pass `__dirname`). A nullish `overrides.version` is ignored, so
- * a caller can pass one through unconditionally.
+ * a caller can pass one through unconditionally. `dirty` is always false under
+ * `CI`, where the tree can only be dirty by the pipeline's own hand.
  */
 export function collectBuildInfo(
   projectRoot: string,
@@ -80,7 +89,7 @@ export function collectBuildInfo(
     commit: git('rev-parse --short HEAD', projectRoot),
     commitFull: git('rev-parse HEAD', projectRoot),
     branch: git('rev-parse --abbrev-ref HEAD', projectRoot),
-    dirty: Boolean(git('status --porcelain', projectRoot)),
+    dirty: workingTreeDirty(projectRoot),
     buildDate: new Date().toISOString(),
     repository: browsableRemote(git('config --get remote.origin.url', projectRoot)),
   };

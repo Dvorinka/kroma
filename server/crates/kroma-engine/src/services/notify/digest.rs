@@ -126,7 +126,7 @@ fn announce_movies<S: HostCtx>(state: &S, movies: &[AddedTitle]) -> usize {
         .param("title", newest.title.clone())
         .link("/films")
     };
-    super::emit(state, &Audience::Everyone, &spec)
+    super::emit(state, &Audience::Everyone, &spec.image(newest.poster_url.clone()))
 }
 
 // One notification per show, to its followers only.
@@ -152,6 +152,7 @@ fn announce_episodes<S: HostCtx>(state: &S, show_id: &str, eps: &[AddedTitle]) -
     .param("title", show_title)
     .param(var, value)
     .link(format!("/show/{show_id}"))
+    .image(newest.poster_url.clone())
     .push_category(PushCategory::MediaAvailable);
     super::emit(state, &Audience::followers(show_id), &spec)
 }
@@ -192,6 +193,25 @@ mod tests {
     fn unread(state: &crate::state::SharedState, user: &str) -> u32 {
         let conn = state.db.get().unwrap();
         db::notifications::unread_count(&conn, user).unwrap()
+    }
+
+    fn set_poster(state: &crate::state::SharedState, table: &str, id: &str, url: &str) {
+        let conn = state.db.get().unwrap();
+        conn.execute_batch(&format!(
+            "UPDATE {table} SET metadata = '{{\"tmdbId\":1,\"posterUrl\":\"{url}\"}}' \
+             WHERE id = '{id}'"
+        ))
+        .unwrap();
+    }
+
+    // The art a user was sent, newest first.
+    fn images(state: &crate::state::SharedState, user: &str) -> Vec<Option<String>> {
+        let conn = state.db.get().unwrap();
+        db::notifications::list_notifications(&conn, user, 20, false)
+            .unwrap()
+            .into_iter()
+            .map(|n| n.image_url)
+            .collect()
     }
 
     #[test]
@@ -244,6 +264,27 @@ mod tests {
         assert_eq!(rows[0].params.get("title"), Some(&ParamValue::Text("Arrival".into())));
         // A lone arrival is worth a Watch button.
         assert_eq!(rows[0].actions.len(), 1);
+    }
+
+    #[test]
+    fn a_new_film_is_announced_with_its_poster() {
+        let (state, user) = seeded();
+        adopt(&state);
+
+        add_movie(&state, "m1", "Dune", "2026-01-03T00:00:00Z");
+        set_poster(&state, "items", "m1", "/api/images/dune.webp");
+        run(&state).unwrap();
+        assert_eq!(images(&state, &user), [Some("/api/images/dune.webp".into())]);
+    }
+
+    #[test]
+    fn a_film_still_waiting_on_enrichment_is_announced_without_art() {
+        let (state, user) = seeded();
+        adopt(&state);
+
+        add_movie(&state, "m1", "Dune", "2026-01-03T00:00:00Z");
+        run(&state).unwrap();
+        assert_eq!(images(&state, &user), [None]);
     }
 
     #[test]
@@ -302,6 +343,7 @@ mod tests {
             season: None,
             episode: None,
             added_at: added.into(),
+            poster_url: None,
         }
     }
 
@@ -315,6 +357,7 @@ mod tests {
             season: Some(season),
             episode: Some(ep),
             added_at: "2026-01-01T00:00:00Z".into(),
+            poster_url: None,
         }
     }
 
@@ -427,6 +470,19 @@ mod tests {
         assert_eq!(summary.sent, 1);
         assert_eq!(unread(&state, &user), 1);
         assert_eq!(bodies(&state, &user), ["notifications.media.episode.body"]);
+    }
+
+    #[test]
+    fn an_episode_shows_its_series_poster_not_its_own_still() {
+        let (state, user) = seeded();
+        add_show(&state, "shw", "Severance", &user);
+        adopt(&state);
+
+        add_episode(&state, "e1", "shw", 1, 4, "2026-02-01T00:00:00Z");
+        set_poster(&state, "items", "e1", "/api/images/still.webp");
+        set_poster(&state, "shows", "shw", "/api/images/severance.webp");
+        run(&state).unwrap();
+        assert_eq!(images(&state, &user), [Some("/api/images/severance.webp".into())]);
     }
 
     #[test]

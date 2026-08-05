@@ -147,6 +147,15 @@ describe('productVersion', () => {
 });
 
 describe('collectBuildInfo', () => {
+  const originalCi = process.env.CI;
+  beforeEach(() => {
+    delete process.env.CI;
+  });
+  afterEach(() => {
+    if (originalCi === undefined) delete process.env.CI;
+    else process.env.CI = originalCi;
+  });
+
   it('reports the commit, branch and remote of a real checkout', () => {
     const dir = project({ git: true, remote: 'git@github.com:owner/repo.git' });
     const info = collectBuildInfo(dir);
@@ -164,6 +173,14 @@ describe('collectBuildInfo', () => {
 
     writeFileSync(join(dir, 'a.txt'), 'changed');
     expect(collectBuildInfo(dir).dirty).toBe(true);
+  });
+
+  it('reports a CI tree as clean, however much the pipeline stamped into it', () => {
+    const dir = project({ git: true });
+    writeFileSync(join(dir, 'a.txt'), 'stamped by the release job');
+
+    process.env.CI = 'true';
+    expect(collectBuildInfo(dir).dirty).toBe(false);
   });
 
   it('DEGRADES to null outside a checkout', () => {

@@ -213,6 +213,7 @@ pub struct AddedTitle {
     pub season: Option<u32>,
     pub episode: Option<u32>,
     pub added_at: String,
+    pub poster_url: Option<String>,
 }
 
 /// Everything added to the catalogue strictly after `since` (ISO-8601, compared
@@ -223,9 +224,14 @@ pub fn items_added_since(
     since: &str,
     limit: usize,
 ) -> rusqlite::Result<Vec<AddedTitle>> {
+    // An episode's own art is a still of that scene; the poster a viewer
+    // recognises belongs to its show, so prefer the show's metadata when there
+    // is one.
     let mut stmt = conn.prepare(
-        "SELECT id, kind, title, show_id, show_title, season, episode, added_at FROM items \
-         WHERE added_at > ?1 ORDER BY added_at DESC LIMIT ?2",
+        "SELECT i.id, i.kind, i.title, i.show_id, i.show_title, i.season, i.episode, i.added_at, \
+         COALESCE(json_extract(s.metadata,'$.posterUrl'), json_extract(i.metadata,'$.posterUrl')) \
+         FROM items i LEFT JOIN shows s ON s.id = i.show_id \
+         WHERE i.added_at > ?1 ORDER BY i.added_at DESC LIMIT ?2",
     )?;
     let rows = stmt.query_map(params![since, limit as i64], |r| {
         Ok(AddedTitle {
@@ -237,6 +243,7 @@ pub fn items_added_since(
             season: r.get(5)?,
             episode: r.get(6)?,
             added_at: r.get(7)?,
+            poster_url: r.get(8)?,
         })
     })?;
     rows.collect()
