@@ -1,0 +1,43 @@
+import { describe, expect, it } from 'vitest';
+import { applyBump, decideBump, nextVersion } from './bump';
+import { parseCommits } from './conventional';
+
+const commits = (msgs: string[]) => parseCommits(msgs);
+
+describe('decideBump', () => {
+  it('picks the strongest intent (breaking > feat > fix)', () => {
+    expect(decideBump(commits(['fix: a', 'feat: b']))).toBe('minor');
+    expect(decideBump(commits(['fix: a', 'feat!: b']))).toBe('major');
+    expect(decideBump(commits(['fix: a', 'perf: b']))).toBe('patch');
+  });
+
+  it('is null when nothing is release-worthy', () => {
+    expect(decideBump(commits(['docs: a', 'chore: b', 'test: c']))).toBeNull();
+  });
+});
+
+describe('applyBump', () => {
+  it('bumps each level and resets lower parts', () => {
+    expect(applyBump('0.1.38', 'patch')).toBe('0.1.39');
+    expect(applyBump('0.1.38', 'minor')).toBe('0.2.0');
+    expect(applyBump('0.1.38', 'major')).toBe('1.0.0');
+  });
+
+  it('drops a pre-release suffix', () => {
+    expect(applyBump('1.2.3-rc1', 'patch')).toBe('1.2.4');
+  });
+
+  it('throws on a non-SemVer input', () => {
+    expect(() => applyBump('latest', 'patch')).toThrow();
+  });
+});
+
+describe('nextVersion', () => {
+  it('returns null when there is no release', () => {
+    expect(nextVersion('0.1.0', commits(['docs: x']))).toBeNull();
+  });
+
+  it('returns the bumped version otherwise', () => {
+    expect(nextVersion('0.1.0', commits(['feat: x']))).toBe('0.2.0');
+  });
+});
