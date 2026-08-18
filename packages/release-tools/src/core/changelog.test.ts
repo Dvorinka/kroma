@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { prepend, renderEntry } from './changelog';
-import { parseCommits } from './conventional';
+import { parseCommits } from './commits';
 
 const commits = parseCommits([
   'feat(tv): android tv home channel',
@@ -28,8 +28,10 @@ describe('renderEntry', () => {
     expect(entry).not.toContain('tidy the readme');
   });
 
-  it('places an optional summary under the heading', () => {
-    const withSummary = renderEntry('0.2.0', '2026-08-18', commits, 'A big TV release.');
+  it('places an optional summary under the heading, above the sections', () => {
+    const withSummary = renderEntry('0.2.0', '2026-08-18', commits, {
+      summary: 'A big TV release.',
+    });
     expect(withSummary.indexOf('A big TV release.')).toBeGreaterThan(
       withSummary.indexOf('## 0.2.0'),
     );

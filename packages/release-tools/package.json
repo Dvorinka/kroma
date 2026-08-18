@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "A testable Bun CLI that derives per-package version bumps and changelog entries from Conventional Commits, writes them into the native manifests (Cargo.toml / package.json / module.json), and can ask the local claude CLI (not the API) for a one-line human summary.",
+  "description": "A project-agnostic, testable toolkit for Conventional-Commit releases: derive per-package SemVer bumps and changelog entries, write them into native manifests (Cargo.toml / package.json / any JSON), and optionally summarise via a local CLI agent. Layered so the core carries no git, filesystem or project specifics.",
   "author": "Maxime Scharwath <maxscharwath@gmail.com>",
   "license": "GPL-2.0-or-later",
   "repository": {
@@ -11,8 +11,12 @@
     "url": "git+https://github.com/maxscharwath/kroma.git",
     "directory": "packages/release-tools"
   },
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "bin": {
-    "kroma-release": "src/cli.ts"
+    "release-tools": "src/cli.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

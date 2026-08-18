@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { applyBump, decideBump, nextVersion } from './bump';
-import { parseCommits } from './conventional';
+import { parseCommits } from './commits';
+import { applyBump, decideBump, nextVersion } from './semver';
+import type { ParsedCommit, ReleaseConfig } from './types';
 
 const commits = (msgs: string[]) => parseCommits(msgs);
 
@@ -13,6 +14,16 @@ describe('decideBump', () => {
 
   it('is null when nothing is release-worthy', () => {
     expect(decideBump(commits(['docs: a', 'chore: b', 'test: c']))).toBeNull();
+  });
+
+  it('honours a custom bump map (a project can promote docs to a patch)', () => {
+    const config = {
+      bumpOf: (c: ParsedCommit) => (c.type === 'docs' ? 'patch' : null),
+      sections: [],
+      changelogHeader: '# Changelog',
+    } satisfies ReleaseConfig;
+    expect(decideBump(commits(['docs: a']), config)).toBe('patch');
+    expect(decideBump(commits(['feat: a']), config)).toBeNull();
   });
 });
 

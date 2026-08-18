@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseCommit, parseCommits } from './conventional';
+import { parseCommit, parseCommits } from './commits';
 
 describe('parseCommit', () => {
   it('parses type, scope and subject', () => {
