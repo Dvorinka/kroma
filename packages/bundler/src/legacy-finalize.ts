@@ -49,7 +49,9 @@ function rewriteIndexHtml(distDir: string, tiers: GateTier[]): void {
   const css = /<link rel="stylesheet"[^>]*href="([^"]+)"[^>]*>/.exec(html);
   if (!js || !css) {
     throw new Error(
-      'legacy-finalize: modern <script type=module> / stylesheet not found in dist/index.html',
+      html.includes('var css, src, pick;')
+        ? 'legacy-finalize: dist/index.html is already gated - the modern build has to run first, and every tier after it (bun run build:<shell> does them in order)'
+        : 'legacy-finalize: modern <script type=module> / stylesheet not found in dist/index.html',
     );
   }
   // The modulepreloads have to move INSIDE the gate: left in the document
@@ -70,6 +72,7 @@ function rewriteIndexHtml(distDir: string, tiers: GateTier[]): void {
       return `        ${open}
           css = './${tier.dir}/style.css';
           src = './${tier.dir}/index.js';
+          pick = '${tier.dir}';
         }`;
     })
     .join('\n');
@@ -79,13 +82,30 @@ function rewriteIndexHtml(distDir: string, tiers: GateTier[]): void {
       /* Engine gate, newest first: Chrome 99+ (cascade layers) takes the modern
          ESM bundle, and each older tier claims what the one above it cannot run. */
       (function () {
-        var css, src;
+        var css, src, pick;
         var modern = typeof window.CSSLayerBlockRule !== 'undefined';
         if (modern) {
           css = '${css[1]}';
           src = '${js[1]}';
+          pick = 'modern';
         }
 ${branches}
+        /* The oldest sets answer no shell and no dlog (intershell_support is
+           disabled on retail firmware), so a bundle that cannot boot has to say
+           so on the screen it would otherwise leave black. */
+        function report(title, detail) {
+          var box = document.getElementById('kroma-boot');
+          if (!box) {
+            box = document.createElement('pre');
+            box.id = 'kroma-boot';
+            box.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;margin:0;padding:48px;background:#0a0a0c;color:#ff8080;font:22px/1.5 monospace;white-space:pre-wrap;word-wrap:break-word;overflow:auto';
+            document.body.appendChild(box);
+          }
+          box.appendChild(document.createTextNode('[' + pick + '] ' + title + '\\n' + detail + '\\n\\n'));
+        }
+        window.onerror = function (message, source, line, column) {
+          report('boot error', message + '\\n' + (source || '') + ':' + line + ':' + column);
+        };
         var link = document.createElement('link');
         link.rel = 'stylesheet';
         link.href = css;
@@ -103,8 +123,16 @@ ${branches}
           script.type = 'module';
           script.crossOrigin = '';
         }
+        script.onerror = function () {
+          report('bundle failed to load', src);
+        };
         script.src = src;
         document.body.appendChild(script);
+        setTimeout(function () {
+          var root = document.getElementById('root');
+          if (root && root.firstChild) return;
+          report('nothing rendered', 'ua: ' + navigator.userAgent + '\\nsrc: ' + src);
+        }, 30000);
       })();
     </script>`;
   html = html.replace(js[0], '').replace(css[0], '');

@@ -9,6 +9,10 @@
 // What core-js does not carry stays: AbortController is Chrome 66 (this build
 // also patches fetch to honour `signal`) and IntersectionObserver is Chrome 51.
 // ResizeObserver is deliberately absent, in every tier: the player falls back
-// for a missing one on purpose.
+// for a missing one on purpose. Proxy is Chrome 49 and core-js excludes it
+// outright, so the shim beside this file stands in where there is none.
+import { installProxyShim } from '@kroma/bundler/proxy-shim';
 import 'abortcontroller-polyfill/dist/polyfill-patch-fetch';
 import 'intersection-observer';
+
+installProxyShim();

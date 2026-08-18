@@ -23,7 +23,8 @@
     "doctor": "make doctor",
     "package": "make package",
     "deploy": "make deploy",
-    "logs": "make logs"
+    "logs": "make logs",
+    "probe:deep": "bun ../tv-build/probe-deep.ts"
   },
   "dependencies": {
     "@kroma/core": "workspace:*",

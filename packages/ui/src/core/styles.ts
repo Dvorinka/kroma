@@ -61,19 +61,14 @@ export function styles<const S extends Record<string, StyleDecl>>(decls: S): Sty
     }
     return built;
   };
-  return new Proxy({} as Styles<S>, {
-    get: (_, key) => resolve()[key as string],
-    has: (_, key) => (key as string) in resolve(),
-    ownKeys: () => Reflect.ownKeys(resolve()),
-    getOwnPropertyDescriptor: (_, key) => {
-      const desc = Object.getOwnPropertyDescriptor(resolve(), key);
-      return desc ? { ...desc, configurable: true } : undefined;
-    },
-    // A shared style must stay immutable, exactly as the frozen set used to be.
-    set: () => false,
-    defineProperty: () => false,
-    deleteProperty: () => false,
-  });
+  // Accessors over the declared names, not a trap over an empty target: Proxy is
+  // Chromium 49 and the deep tier is 47. Frozen, so a shared style stays
+  // immutable exactly as it was.
+  const view = {} as Record<string, AnyStyle>;
+  for (const name of Object.keys(decls)) {
+    Object.defineProperty(view, name, { get: () => resolve()[name], enumerable: true });
+  }
+  return Object.freeze(view) as Styles<S>;
 }
 
 /** One style, for the handful of places a set of one would be noise. Resolved
