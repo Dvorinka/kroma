@@ -55,4 +55,30 @@ describe('affected', () => {
   it('a client change does not drag its siblings', () => {
     expect([...affected(['clients/tizen/src/app.ts'], graph)]).toEqual(['tizen']);
   });
+
+  it('terminates on a dependency cycle', () => {
+    const cyclic: Graph = {
+      projects: [
+        {
+          name: 'a',
+          dir: 'packages/a',
+          manifest: 'packages/a/package.json',
+          version: '1.0.0',
+          deps: ['b'],
+        },
+        {
+          name: 'b',
+          dir: 'packages/b',
+          manifest: 'packages/b/package.json',
+          version: '1.0.0',
+          deps: ['a'],
+        },
+      ],
+    };
+    expect([...affected(['packages/a/x.ts'], cyclic)].sort()).toEqual(['a', 'b']);
+  });
+
+  it('returns nothing for an empty change set', () => {
+    expect([...affected([], graph)]).toEqual([]);
+  });
 });

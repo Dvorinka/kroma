@@ -34,4 +34,16 @@ describe('satisfies', () => {
     expect(satisfies('v1.2.3', '^1.0.0')).toBe(true);
     expect(satisfies('1.2.3-rc1', '^1.2.3')).toBe(true);
   });
+
+  it('returns false for a malformed version or range instead of throwing', () => {
+    expect(satisfies('not-a-version', '^1.0.0')).toBe(false);
+    expect(satisfies('1.0.0', 'garbage')).toBe(false);
+    expect(satisfies('1.0.0', '^oops')).toBe(false);
+    expect(satisfies('', '^1.0.0')).toBe(false);
+  });
+
+  it('caret on 0.0.x is exact-patch only', () => {
+    expect(satisfies('0.0.3', '^0.0.3')).toBe(true);
+    expect(satisfies('0.0.4', '^0.0.3')).toBe(false);
+  });
 });
