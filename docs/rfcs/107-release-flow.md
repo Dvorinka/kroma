@@ -1,126 +1,127 @@
-# RFC 107: a release flow that builds only what changed, and proves it built everything
+# RFC 107: one release model for every artifact — independent versions, compatibility by contract
 
 - Status: **DRAFT**
 - PR: #107
-- Affects: `.github/workflows/release.yml`, `.github/workflows/deploy.yml`, `.github/workflows/synology.yml`, `.github/scripts/resolve-version.sh`, `.github/scripts/verify-candidate.sh`, areas `area/server` and all client areas
+- Affects: `.github/workflows/release.yml`, `.github/workflows/deploy.yml`, `.github/workflows/synology.yml`, `.github/workflows/modules.yml`, `.github/scripts/resolve-version.sh`, `.github/scripts/verify-candidate.sh`, `server/**`, all client areas
 
 ## Summary
 
-Keep the part of today's flow that is already better than most projects - build a
-candidate on every push, promote it to a Release only behind a human approval - and fix
-the three things that are below the industry norm: the version number is hand-edited with
-no changelog, a candidate rebuilds every platform even when one file changed, and "the
-candidate is complete" is not a single honest signal because the Synology `.spk` lives in
-a second workflow checked only at promotion time. Adopt release-please for the version and
-changelog; scope each platform build to its own paths; fold the `.spk` into the Candidate
-gate. Do **not** split the core server+clients into independent versions the way the
-`.kmod` modules are split - they are coupled by the API, and one product version is the
-right answer for a self-hosted product.
+Every releasable unit — the server, each client, each `.kmod` module — becomes an
+independently versioned package under a single release-please manifest. A client hotfix
+ships that client alone; nothing else revs. Conventional Commits drive each package's
+SemVer and CHANGELOG from the commits that touched its paths. What keeps a self-hosted
+fleet coherent is **not** a shared version number but an explicit, enforced **server API
+version** that clients declare a minimum for. Keep the part of today's flow that is already
+good — build a candidate, promote behind a human approval — but make it per-artifact, make
+a candidate rebuild only what changed, and make "this artifact is complete" a single honest
+gate.
 
 ## Motivation
 
-Concrete failures from the last two days, all real:
+Two realities the current single-fleet-version flow fights against:
 
-1. **The version is hand-edited.** Cutting 0.1.39 meant a human editing `server/Cargo.toml`
-   from `0.1.38`. There is no changelog, and the bump is always `+0.0.1` regardless of
-   whether the delta was a `fix:` or a `feat:`. The norm - Conventional Commits (already
-   ~90% followed here) driving SemVer and a generated `CHANGELOG.md` - is not in place.
-2. **A candidate rebuilds the whole fleet for a one-platform change.** `release.yml`'s
-   `paths-ignore` gates the *whole run*, but inside a run every platform builds
-   unconditionally. A one-line Android TV fix rebuilds desktop, mobile and the server
-   `.spk`. That is minutes of CI and cache pressure spent on bytes that did not change.
-3. **"Complete" is assembled, not asserted.** The Candidate gate depends on
-   `[version, tv, desktop, appletv, mobile]`. The Synology `.spk` is built by a *separate*
-   workflow (`synology.yml`) and is only correlated to the commit at promotion time inside
-   `verify-candidate.sh`. So a green Candidate gate does **not** mean the `.spk` exists;
-   you find that out later, at deploy. There is no single check that says "this version
-   built everywhere, `.spk` included."
+1. **Clients hotfix independently.** A Tizen-only keyboard fix should ship a new Tizen
+   build and move nothing else. Today one product version stamps the whole fleet, so a
+   one-client fix either drags a fleet-wide rev or ships as an unversioned patch nobody can
+   name. Every app-store/self-hosted product of any size versions its clients on their own
+   cadence.
+2. **The version is hand-edited, un-changelogged, and always +0.0.1.** Cutting 0.1.39 was a
+   human editing `server/Cargo.toml`. No `CHANGELOG.md`, and the bump ignores whether the
+   delta was a `fix:` or a `feat:` — SemVer is not being derived from the commits that
+   already state intent.
+
+And two build-side facts, unchanged from the first draft of this RFC:
+
+3. A candidate rebuilds every platform even for a one-platform change (`paths-ignore` gates
+   the run, but inside it every leg builds).
+4. "Complete" is assembled at promotion time, not asserted on the candidate: the Synology
+   `.spk` lives in a separate workflow and is only correlated in `verify-candidate.sh`.
 
 ## Proposal
 
-Three independent changes; each stands alone and can land separately.
+### The versioning model: independent packages, compatibility by contract
 
-### 1. release-please owns the version and the changelog
+Separate two axes today's flow conflates:
 
-Add a `release-please` job (manifest mode) that, on every push to `main`, maintains a
-standing **Release PR**: it computes the next version from the Conventional Commits since
-the last release (`fix:` -> patch, `feat:` -> minor, `!`/`BREAKING CHANGE` -> major),
-bumps `server/Cargo.toml` (the single source of truth `resolve-version.sh` already reads),
-and regenerates `CHANGELOG.md`. Merging that PR is the deliberate act that "opens" the
-version - exactly the `chore(release): X` commit done by hand today, now generated.
+- **Release cadence** — *when* an artifact ships. Made **independent per unit**.
+- **Compatibility** — *which client works with which server*. Made an **explicit contract**,
+  not a shared number.
 
-Nothing downstream changes: the merge is a push to `main`, which builds the candidate for
-the new version, which is promoted through `deploy.yml` behind the same `production`
-approval. The two human gates stay: merge the Release PR, then approve the promotion.
+Concretely:
 
-Configuration lives in `release-please-config.json` + `.release-please-manifest.json`
-(both plain repo files, not workflows).
+- **One `release-please-config.json` (manifest mode), one package per releasable unit:**
+  `server`, `clients/web`, `clients/tizen`, `clients/webos`, `clients/tv-native`,
+  `clients/desktop`, `clients/mobile`. Each carries its own version in
+  `.release-please-manifest.json`, its own `CHANGELOG.md`, and its version is computed from
+  Conventional Commits scoped to its paths. A `fix(tv):` bumps only the TV clients; a
+  `feat(server):` bumps only the server.
+- **Component tags:** `<component>-v<version>` (e.g. `tizen-v0.1.4`, `kroma-server-v0.2.0`)
+  — release-please's clean multi-package default, and the same spirit as the modules'
+  existing `tv.kroma.<id>@<version>` tags. This unifies the whole repo under **one** model
+  instead of "core is special, modules are special".
+- **The modules fold into the same manifest** as further packages. They are already
+  independent with a contract, so they are the proof this model works; bringing them under
+  release-please replaces the bespoke bump logic in `modules.yml` with the same tooling.
+- **A server API-compatibility version** (an integer, bumped only on a breaking API change)
+  becomes load-bearing: the server advertises it, every client declares the minimum it
+  needs, and the client refuses to talk to an older server with an honest message. This is
+  what makes independent client versions safe — the coherence lives in the contract, not in
+  keeping cosmetic numbers aligned.
 
-### 2. Each platform builds only when its inputs change
+### The build/publish flow: keep the good, fix the waste
 
-Give every `_release-*.yml` leg a path predicate so a candidate rebuilds only the
-platforms a commit can affect (`clients/tizen/**` -> TV only, `server/**` +
-`clients/web/**` -> `.spk`, etc.), with a shared floor (root manifest, lockfiles, the
-release workflows themselves) that rebuilds everything. A platform that legitimately did
-not change is marked **reused, not skipped**: the candidate is still complete because its
-artifact is carried forward from the last green build of that platform at the same or an
-ancestor commit. Promotion assembles the newest green artifact per platform.
-
-### 3. The Candidate gate covers the whole fleet, `.spk` included
-
-Add the matching `synology.yml` run to what "complete" means, so a green Candidate gate is
-a true statement that every promotable artifact exists. Move the `.spk`-exists assertion
-out of `verify-candidate.sh` (late, at deploy) and into the gate (early, on the candidate).
-A skipped or failed platform makes the gate fail, so a partial candidate can never look
-promotable.
+- **Per-artifact candidate + promote.** Each package's Release-PR merge opens its version;
+  the existing candidate build + `production`-approval promotion is preserved, but scoped to
+  that artifact. The two human gates stay (merge the Release PR, approve the promotion).
+- **Build only what changed.** Each `_release-*.yml` leg gets a path predicate; an unchanged
+  platform is **reused, not skipped**, its last green artifact carried forward, so a
+  candidate is always complete without rebuilding the world.
+- **A complete gate per artifact, `.spk` included.** The Candidate gate asserts every
+  artifact that belongs to the unit being promoted exists — the Synology `.spk` moves from a
+  late `verify-candidate.sh` check into the gate. A partial candidate can never look
+  promotable.
 
 ## What this costs
 
-- **A new dependency + config surface**: release-please and two JSON config files to keep
-  correct. Mitigated by it being the de-facto standard (googleapis and much of the Node
-  ecosystem run it).
-- **Path predicates are a maintenance burden**: get one wrong and a platform silently
-  reuses a stale artifact. This is the sharpest edge; it argues for a conservative floor
-  (when unsure, rebuild) and for the gate in change 3 as the backstop.
-- **A carried-forward artifact must be addressable** by commit, which means retaining
-  per-platform build artifacts long enough to reuse - some storage cost.
+- **The API-compat contract must become real and enforced.** This is the keystone: without
+  it, independent client versions are *more* dangerous than lockstep (silent breakage). The
+  cost is a small, permanent discipline — bump the integer on breaking changes, check it on
+  connect. **0.1.x is the cheapest moment this will ever be** to establish it, before many
+  servers and clients are in the wild.
+- **The publish flow moves from one-fleet-Release to per-artifact Releases.** Real surgery
+  on `release.yml`/`deploy.yml`. Bigger than the first draft of this RFC proposed.
+- **More tags and Releases** on the repo. Managed by tooling, but a busier releases page.
+- **Path predicates are a sharp edge** — a wrong one silently reuses a stale artifact. The
+  gate is the backstop; when unsure, the floor rebuilds.
 
 ## Compatibility
 
-- **Older clients / paired devices**: unaffected. The version scheme (`X.Y.Z`, one number
-  for the fleet) does not change; only how the number is computed.
-- **Modules**: unaffected. `.kmod` bundles keep their own `<id>@<version>` cadence in
-  `modules.yml`. This RFC deliberately does not touch them.
-- **In-flight release 0.1.39**: can ship on the current flow before any of this lands, or
-  wait; the changes are backward-compatible with a hand-edited bump.
+- **Existing installs / paired devices:** unaffected at switchover — the first per-package
+  versions are seeded from today's `0.1.38`. The API-compat integer starts at its current
+  de-facto value (1) and only moves on real breaks.
+- **Modules:** their public tag scheme (`tv.kroma.<id>@<version>`) is preserved; only the
+  machinery that computes the bump changes.
+- **In-flight 0.1.39:** ships on the current flow first (see below); this model applies from
+  the next cycle.
 
 ## Alternatives
 
-- **Do nothing.** The flow works - 0.1.39 is fully promotable today. But every release
-  keeps paying the manual-bump and full-rebuild cost, and "is it complete" stays a
-  two-workflow correlation a human has to trust.
-- **Split the core per platform, like the `.kmod` modules.** Rejected. Modules split
-  *because they are independent* - optional, out-of-process, contract-bound sidecars. The
-  server and clients are *coupled*: every client speaks the server API. Independent
-  versions (`web 0.3`, `tizen 0.2`, `server 0.5`) would force an N×M compatibility matrix
-  onto a self-hosted product where the user runs the server *and* installs the clients -
-  the worst place to make "which version works with which" a support question. The norm
-  bears this out: Angular versions its packages in lockstep (coupled), Babel versions them
-  independently (decoupled); the deciding question is never "can we split" but "is it
-  coupled". Split the **build** (change 2), not the **version**.
-- **semantic-release** instead of release-please. Rejected: it tags automatically on push,
-  which would bypass the promotion-behind-approval gate that is the best property of the
-  current design.
+- **Do nothing / keep one fleet version.** Rejected: it cannot express a per-client hotfix,
+  the exact case that motivated this.
+- **Shared `X.Y` + per-client patch `Z` (linked-versions).** A middle model: keep minor in
+  lockstep, let patch diverge. Considered and set aside — it still couples cadence
+  artificially and adds the linked-versions plugin, for a coherence that the API contract
+  already provides more honestly. If the full split proves too heavy, this is the fallback.
+- **semantic-release.** Rejected: auto-tags on push, bypassing the promotion approval gate
+  that is the best property of the current design.
 
 ## Unresolved
 
-- **A server↔client API-compatibility number**, distinct from the product version, is the
-  honest way to pin a client to a server the day an API break happens. Worth its own RFC;
-  noted here so the single-version decision above is understood as "one *product* version",
-  not "compatibility never needs expressing".
-- **Implementation is gated on `workflow` scope.** Every change here edits
-  `.github/workflows/**`. The automation account currently pushes with `repo` scope only
-  (no `workflow`), so it cannot open the implementing branch itself. Decide: grant the
-  scope for a review-only spike branch, or have a maintainer apply the workflow diffs this
-  RFC specifies. The non-workflow parts (release-please config, changelog) can land
-  without it.
+- **The API-compat version's exact shape** — a single server integer (recommended) vs.
+  per-capability negotiation. Its own follow-up RFC if it grows.
+- **Modules now or later.** Folding them into the manifest in the same change vs. a
+  follow-up once the core model is proven. Leaning follow-up, to bound blast radius.
+- **Implementation needs `workflow` scope.** Every workflow edit here is refused to the
+  automation account (`repo` scope only). Either a maintainer applies the staged workflow
+  diffs, or the scope is granted for a review-only spike branch. The non-workflow pieces
+  (release-please config/manifest, the API-version field) can land without it.
