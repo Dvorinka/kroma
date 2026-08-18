@@ -6,15 +6,20 @@
 
 ## Summary
 
-Every releasable unit — the server, each client, each `.kmod` module — becomes an
-independently versioned package under a single release-please manifest. A client hotfix
-ships that client alone; nothing else revs. Conventional Commits drive each package's
-SemVer and CHANGELOG from the commits that touched its paths. What keeps a self-hosted
-fleet coherent is **not** a shared version number but an explicit, enforced **server API
-version** that clients declare a minimum for. Keep the part of today's flow that is already
-good — build a candidate, promote behind a human approval — but make it per-artifact, make
-a candidate rebuild only what changed, and make "this artifact is complete" a single honest
-gate.
+Generalise the model the `.kmod` modules **already** use to the whole repo. A module today
+keeps its version in its own native manifest (`module.json`) and declares its compatibility
+(`minServer`, `dependsOn`); that is the pattern. Extend it: the server versions in
+`server/Cargo.toml`, each client in its `package.json` (plus a `minServer` field like the
+modules have), each module stays in `module.json`. The native manifest is the single source
+of truth for a version — nothing lives in a separate "versions file".
+
+A **bumping system** — release-please, the industry-standard tool, not something we write —
+reads Conventional Commits per path, decides patch/minor/major for each package, writes the
+new number into that package's native manifest, regenerates its `CHANGELOG.md`, and opens a
+Release PR. Merging it is the deliberate release act. A client hotfix ships that client
+alone; nothing else revs. Compatibility stays coherent through `minServer`, not through a
+shared number. Keep today's good parts — candidate build, promote behind a human approval —
+and additionally build only what changed and assert completeness in one gate.
 
 ## Motivation
 
@@ -39,6 +44,17 @@ And two build-side facts, unchanged from the first draft of this RFC:
 
 ## Proposal
 
+### The bumping system: release-please reads commits, writes native manifests
+
+We do **not** hand-roll a version bumper (that is maintenance we do not want, and the norm
+already exists). release-please, on every push to `main`, keeps a standing Release PR per
+package: it computes the next SemVer from the Conventional Commits that touched that
+package's paths, writes it into the package's **native manifest** — `Cargo.toml` for the
+server, `package.json` for a client, `module.json` for a module (via the json updater) — and
+regenerates that package's `CHANGELOG.md`. Merging the Release PR is the release act. The
+modules leave their bespoke bump in `module-tools`/`modules.yml` for this same tool, so all
+three families bump identically.
+
 ### The versioning model: independent packages, compatibility by contract
 
 Separate two axes today's flow conflates:
@@ -62,11 +78,12 @@ Concretely:
 - **The modules fold into the same manifest** as further packages. They are already
   independent with a contract, so they are the proof this model works; bringing them under
   release-please replaces the bespoke bump logic in `modules.yml` with the same tooling.
-- **A server API-compatibility version** (an integer, bumped only on a breaking API change)
-  becomes load-bearing: the server advertises it, every client declares the minimum it
-  needs, and the client refuses to talk to an older server with an honest message. This is
-  what makes independent client versions safe — the coherence lives in the contract, not in
-  keeping cosmetic numbers aligned.
+- **Compatibility by `minServer`, a pattern already in production.** Modules already carry
+  `minServer` (and `dependsOn` semver ranges) in `module.json` and are gated on it. Give
+  clients the same field: a client declares the minimum server it needs and refuses an older
+  one with an honest message. This is not a new contract to invent — it is the module
+  contract generalised, which is exactly why it is safe. The coherence lives in `minServer`,
+  not in keeping cosmetic numbers aligned.
 
 ### The build/publish flow: keep the good, fix the waste
 
