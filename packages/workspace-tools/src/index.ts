@@ -7,3 +7,5 @@ export { compare, parse, type SemVer, satisfies } from './core/range';
 export { type Violation, type ViolationKind, verify } from './core/verify';
 export { changedFiles, type Exec } from './io/git';
 export { loadGraph } from './io/load';
+export { type Registries, registryFor } from './registry/routing';
+export { type DependencySource, type DependencySpec, parseDependency } from './registry/spec';
