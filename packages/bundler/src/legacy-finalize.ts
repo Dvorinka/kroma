@@ -42,6 +42,22 @@ async function downlevelCss(distDir: string, dir: string, chrome: number): Promi
   writeFileSync(path, code);
 }
 
+// Brackets the tier's bundle with two reports, so a set that says nothing can
+// still say where it stopped: whether the script parsed and started at all, and
+// whether it reached the end of module init. Only when a collector is
+// configured, so a shipped bundle is byte-for-byte what it was.
+function markStages(distDir: string, dir: string): void {
+  const path = join(distDir, dir, 'index.js');
+  const code = readFileSync(path, 'utf8');
+  const send = (what: string) => `if(window.__kromaSend)window.__kromaSend('${what}','${dir}');`;
+  const directive = /^\s*(['"])use strict\1;/.exec(code);
+  const at = directive ? directive[0].length : 0;
+  writeFileSync(
+    path,
+    code.slice(0, at) + send('bundle entered') + code.slice(at) + send('bundle evaluated'),
+  );
+}
+
 function rewriteIndexHtml(distDir: string, tiers: GateTier[], sink: string): void {
   const path = join(distDir, 'index.html');
   let html = readFileSync(path, 'utf8');
@@ -118,6 +134,30 @@ ${branches}
           report('boot error', message + '\\n' + where);
           send('boot error', message + ' @ ' + where);
         };
+        window.__kromaSend = send;
+        function can(source) {
+          try {
+            // biome-ignore lint/security/noGlobalEval: the point is to ask the parser
+            eval(source);
+            return 1;
+          } catch (e) {
+            return 0;
+          }
+        }
+        var mem = window.performance && window.performance.memory;
+        send(
+          'env',
+          'arrow=' + can('(function(){return()=>1})') +
+            ' template=' + can('\`x\`') +
+            ' let=' + can('let x=1') +
+            ' class=' + can('class A{}') +
+            ' spread=' + can('[].concat(...[[1]])') +
+            ' proxy=' + typeof Proxy +
+            ' symbol=' + typeof Symbol +
+            ' promise=' + typeof Promise +
+            ' heapLimit=' + (mem ? Math.round(mem.jsHeapSizeLimit / 1048576) + 'MB' : 'n/a') +
+            ' screen=' + screen.width + 'x' + screen.height,
+        );
         send('loading', src);
         var link = document.createElement('link');
         link.rel = 'stylesheet';
@@ -149,7 +189,9 @@ ${branches}
           var paint = window.getComputedStyle
             ? window.getComputedStyle(body).backgroundColor + ' / ' + window.getComputedStyle(body).color
             : 'unknown';
-          return { nodes: nodes, detail: 'nodes=' + nodes + ' size=' + (root ? root.offsetWidth + 'x' + root.offsetHeight : '?') + ' paint=' + paint };
+          var m = window.performance && window.performance.memory;
+          var heap = m ? ' heap=' + Math.round(m.usedJSHeapSize / 1048576) + '/' + Math.round(m.jsHeapSizeLimit / 1048576) + 'MB' : '';
+          return { nodes: nodes, detail: 'nodes=' + nodes + ' size=' + (root ? root.offsetWidth + 'x' + root.offsetHeight : '?') + ' paint=' + paint + heap };
         }
         setTimeout(function () { send('at 10s', look().detail); }, 10000);
         setTimeout(function () {
@@ -335,6 +377,9 @@ export function legacyFinalize({
       if (gate) {
         rewriteIndexHtml(distDir, gate, sink);
         if (sink) this.info?.(`[${dir}] gate reports to ${sink}`);
+      }
+      if (sink) {
+        markStages(distDir, dir);
         const inlined = inlineFonts(distDir);
         if (inlined > 0) {
           this.info?.(`[${dir}] inlined ${(inlined / 1024).toFixed(0)} kB of fonts into the CSS`);
