@@ -1,7 +1,7 @@
-# RFC NNNN: a release flow that builds only what changed, and proves it built everything
+# RFC 107: a release flow that builds only what changed, and proves it built everything
 
 - Status: **DRAFT**
-- PR: #NNNN
+- PR: #107
 - Affects: `.github/workflows/release.yml`, `.github/workflows/deploy.yml`, `.github/workflows/synology.yml`, `.github/scripts/resolve-version.sh`, `.github/scripts/verify-candidate.sh`, areas `area/server` and all client areas
 
 ## Summary
