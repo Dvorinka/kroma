@@ -43,6 +43,19 @@ const next = nextVersion(current, commits);
 if (next) writeFileSync('Cargo.toml', updater.write(text, next));
 ```
 
+## Changelog format
+
+Entries follow the Keep a Changelog / conventional-changelog conventions: an
+`## <version> (<date>)` heading, `### <Section>` subheadings in config order
+(`⚠ BREAKING CHANGES`, `Features`, `Bug Fixes`, `Performance Improvements` by
+default), `-` bullets with an optional `**scope:**` prefix, one blank line
+between blocks and a single trailing newline. A breaking commit is listed once,
+under the breaking section only.
+
+`prepend` inserts a new entry above the first existing `##` entry, so an existing
+header and preamble ("All notable changes…") survive untouched; the `header`
+argument only seeds a file that has none.
+
 Everything is overridable through a `ReleaseConfig`: the bump map (`bumpOf`), the
 changelog `sections`, the changelog `header`. Add a manifest format by
 implementing `ManifestUpdater`. Swap the AI summary for any backend by passing a

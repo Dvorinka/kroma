@@ -22,10 +22,5 @@ export function parseCommit(message: string): ParsedCommit | null {
 // Parse many; silently drop the lines that are not Conventional Commits (merge
 // commits, hand-written reverts) rather than guessing at their intent.
 export function parseCommits(messages: string[]): ParsedCommit[] {
-  const out: ParsedCommit[] = [];
-  for (const message of messages) {
-    const parsed = parseCommit(message);
-    if (parsed) out.push(parsed);
-  }
-  return out;
+  return messages.map(parseCommit).filter((commit) => commit !== null);
 }

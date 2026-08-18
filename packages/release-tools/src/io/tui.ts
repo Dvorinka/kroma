@@ -2,7 +2,7 @@ import { cancel, confirm, intro, isCancel, log, outro, select, spinner } from '@
 import { renderEntry } from '../core/changelog';
 import { applyBump, decideBump, LEVELS } from '../core/semver';
 import type { BumpLevel, ParsedCommit } from '../core/types';
-import type { Summariser } from './summarize';
+import { commitContext, type Summariser } from './summarize';
 
 export interface InteractiveInput {
   manifestPath: string;
@@ -52,7 +52,7 @@ export async function interactiveRelease(
     return null;
   }
 
-  const version = applyBump(input.current, level as BumpLevel);
+  const version = applyBump(input.current, level);
 
   let summary: string | undefined;
   if (input.summarise) {
@@ -66,8 +66,7 @@ export async function interactiveRelease(
     if (wantSummary) {
       const spin = spinner();
       spin.start('Asking the local CLI…');
-      const context = input.commits.map((c) => `- ${c.type}: ${c.subject}`).join('\n');
-      summary = input.summarise(context) ?? undefined;
+      summary = input.summarise(commitContext(input.commits)) ?? undefined;
       spin.stop(summary ? 'Summary written.' : 'No summary (skipped).');
     }
   }

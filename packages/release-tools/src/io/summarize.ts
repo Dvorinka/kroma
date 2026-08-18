@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process';
+import type { ParsedCommit } from '../core/types';
 
 // A summariser turns a change description into a one-sentence human line, or
 // null when it cannot. It is an interface so a host project can plug in any
@@ -48,4 +49,10 @@ export function cliSummariser(options: CliSummariserOptions = {}): Summariser {
       return null;
     }
   };
+}
+
+// The change description handed to a Summariser. Shared so every caller (CLI,
+// TUI, a host project) summarises from the same shape of input.
+export function commitContext(commits: ParsedCommit[]): string {
+  return commits.map((commit) => `- ${commit.type}: ${commit.subject}`).join('\n');
 }

@@ -38,3 +38,14 @@ describe('jsonUpdater', () => {
     expect(jsonUpdater.write(mod, '0.1.9')).toContain('"minServer": "0.1.4"');
   });
 });
+
+describe('updaterFor', () => {
+  it('rejects an unknown extension', () => {
+    expect(() => updaterFor('Cargo.lock')).toThrow(/no manifest updater/);
+  });
+
+  it('matches on the extension, not the file name', () => {
+    expect(updaterFor('a/b/module.json')).toBe(jsonUpdater);
+    expect(updaterFor('a/b/Cargo.toml')).toBe(cargoUpdater);
+  });
+});

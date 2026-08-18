@@ -4,11 +4,22 @@ import type { ParsedCommit, ReleaseConfig } from './types';
 // Render one changelog entry from a set of commits, sectioned by the config.
 // Pure: same commits + version + config always produce the same markdown, so a
 // project's CI can assert the changelog is up to date the way a codegen check does.
+//
+// The shape follows Keep a Changelog / conventional-changelog: an `## version
+// (date)` entry heading, `### Section` subheadings, `-` bullets, exactly one
+// blank line between blocks and no trailing whitespace.
+
+// Where a new entry goes: above the first existing entry, below whatever header
+// or preamble the file already carries.
+const FIRST_ENTRY = /^## /m;
 
 function line(commit: ParsedCommit): string {
   const scope = commit.scope ? `**${commit.scope}:** ` : '';
-  const breaking = commit.breaking ? ' ⚠️ BREAKING' : '';
-  return `- ${scope}${commit.subject}${breaking}`;
+  return `- ${scope}${commit.subject}`;
+}
+
+function section(title: string, commits: ParsedCommit[]): string {
+  return [`### ${title}`, '', ...commits.map(line)].join('\n');
 }
 
 export interface RenderOptions {
@@ -25,26 +36,28 @@ export function renderEntry(
   options: RenderOptions = {},
 ): string {
   const config = options.config ?? defaultConfig;
-  const out: string[] = [`## ${version} (${date})`, ''];
-  if (options.summary) out.push(options.summary, '');
-
-  for (const section of config.sections) {
-    const items = commits.filter(section.include);
-    if (items.length === 0) continue;
-    out.push(`### ${section.title}`, '');
-    for (const commit of items) out.push(line(commit));
-    out.push('');
+  const summary = options.summary?.trim();
+  const blocks = [`## ${version} (${date})`];
+  if (summary) blocks.push(summary);
+  for (const { title, include } of config.sections) {
+    const items = commits.filter(include);
+    if (items.length > 0) blocks.push(section(title, items));
   }
-  return out.join('\n');
+  return `${blocks.join('\n\n')}\n`;
 }
 
-// Prepend a new entry beneath the changelog header, above older entries.
+// Prepend a new entry above the older ones, preserving the file's existing
+// header and preamble. `header` is only the fallback for a file that has none
+// (a missing or empty changelog, or one that starts straight at an entry).
 export function prepend(
   existing: string,
   entry: string,
   header: string = defaultConfig.changelogHeader,
 ): string {
-  const escaped = header.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const body = existing.replace(new RegExp(`^${escaped}\\n*`), '').trimStart();
-  return `${header}\n\n${entry.trimEnd()}\n\n${body}`.trimEnd().concat('\n');
+  const body = existing.trim();
+  const at = body.search(FIRST_ENTRY);
+  const preamble = (at === -1 ? body : body.slice(0, at)).trim();
+  const older = at === -1 ? '' : body.slice(at).trim();
+  const blocks = [preamble || header, entry.trim(), older].filter((block) => block.length > 0);
+  return `${blocks.join('\n\n')}\n`;
 }

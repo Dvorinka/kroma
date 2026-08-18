@@ -1,20 +1,26 @@
 import type { BumpLevel, ParsedCommit, ReleaseConfig, Section } from './core/types';
 
-// The conventional defaults (SemVer + the Angular changelog sections). A project
-// reuses these as-is, or spreads and overrides one field — e.g. its own bumpOf.
+// The conventional defaults (SemVer + the conventional-changelog / release-please
+// section names). A project reuses these as-is, or spreads and overrides one
+// field — e.g. its own bumpOf.
+
+const BUMP_BY_TYPE: Record<string, BumpLevel> = { feat: 'minor', fix: 'patch', perf: 'patch' };
 
 export function defaultBumpOf(commit: ParsedCommit): BumpLevel | null {
   if (commit.breaking) return 'major';
-  if (commit.type === 'feat') return 'minor';
-  if (commit.type === 'fix' || commit.type === 'perf') return 'patch';
-  return null;
+  return BUMP_BY_TYPE[commit.type] ?? null;
+}
+
+// A breaking commit is reported once, in the breaking section, whatever its type.
+function plain(type: string): Section['include'] {
+  return (commit) => commit.type === type && !commit.breaking;
 }
 
 export const defaultSections: Section[] = [
-  { title: '⚠️ Breaking Changes', include: (c) => c.breaking },
-  { title: 'Features', include: (c) => c.type === 'feat' && !c.breaking },
-  { title: 'Bug Fixes', include: (c) => c.type === 'fix' && !c.breaking },
-  { title: 'Performance', include: (c) => c.type === 'perf' && !c.breaking },
+  { title: '⚠ BREAKING CHANGES', include: (commit) => commit.breaking },
+  { title: 'Features', include: plain('feat') },
+  { title: 'Bug Fixes', include: plain('fix') },
+  { title: 'Performance Improvements', include: plain('perf') },
 ];
 
 export const defaultConfig: ReleaseConfig = {

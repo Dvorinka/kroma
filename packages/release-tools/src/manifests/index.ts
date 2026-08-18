@@ -23,15 +23,16 @@ export const jsonUpdater: ManifestUpdater = {
   write: (text, version) => text.replace(/("version"[ \t]*:[ \t]*")[^"]+(")/, `$1${version}$2`),
 };
 
-const BY_EXTENSION: Array<{ test: (path: string) => boolean; updater: ManifestUpdater }> = [
-  { test: (p) => p.endsWith('.toml'), updater: cargoUpdater },
-  { test: (p) => p.endsWith('.json'), updater: jsonUpdater },
-];
+const BY_EXTENSION: Record<string, ManifestUpdater> = {
+  '.toml': cargoUpdater,
+  '.json': jsonUpdater,
+};
 
-// Pick an updater by file path. Extend BY_EXTENSION (or pass an updater
+// Pick an updater by file extension. Extend BY_EXTENSION (or pass an updater
 // explicitly) to support a format not covered here.
 export function updaterFor(path: string): ManifestUpdater {
-  const entry = BY_EXTENSION.find((e) => e.test(path));
-  if (!entry) throw new Error(`no manifest updater for ${path}`);
-  return entry.updater;
+  const extension = Object.keys(BY_EXTENSION).find((suffix) => path.endsWith(suffix));
+  const updater = extension ? BY_EXTENSION[extension] : undefined;
+  if (!updater) throw new Error(`no manifest updater for ${path}`);
+  return updater;
 }

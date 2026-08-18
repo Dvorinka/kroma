@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { cliSummariser } from './summarize';
+import { parseCommits } from '../core/commits';
+import { cliSummariser, commitContext } from './summarize';
 
 describe('cliSummariser', () => {
   it('returns the first line of a successful run', () => {
@@ -37,5 +38,16 @@ describe('cliSummariser', () => {
     s('CTX');
     expect(seen[0]).toBe('-p');
     expect(seen[1]).toContain('CTX');
+  });
+});
+
+describe('commitContext', () => {
+  it('renders one line per commit, type and subject only', () => {
+    const commits = parseCommits(['feat(tv): a thing', 'fix: another']);
+    expect(commitContext(commits)).toBe('- feat: a thing\n- fix: another');
+  });
+
+  it('is empty for no commits', () => {
+    expect(commitContext([])).toBe('');
   });
 });
