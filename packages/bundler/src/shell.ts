@@ -181,6 +181,7 @@ export function tvShellLegacyConfig(
         dir,
         deep,
         gate,
+        sink: process.env.KROMA_TV_LOG_SINK ?? '',
       }),
     ],
     // `import.meta` doesn't exist in a classic script; the IIFE output substitutes

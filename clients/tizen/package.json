@@ -24,7 +24,8 @@
     "package": "make package",
     "deploy": "make deploy",
     "logs": "make logs",
-    "probe:deep": "bun ../tv-build/probe-deep.ts"
+    "probe:deep": "bun ../tv-build/probe-deep.ts",
+    "logsink": "bun ../tv-build/log-sink.ts"
   },
   "dependencies": {
     "@kroma/core": "workspace:*",

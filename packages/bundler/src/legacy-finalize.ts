@@ -42,7 +42,7 @@ async function downlevelCss(distDir: string, dir: string, chrome: number): Promi
   writeFileSync(path, code);
 }
 
-function rewriteIndexHtml(distDir: string, tiers: GateTier[]): void {
+function rewriteIndexHtml(distDir: string, tiers: GateTier[], sink: string): void {
   const path = join(distDir, 'index.html');
   let html = readFileSync(path, 'utf8');
   const js = /<script type="module"[^>]*src="([^"]+)"[^>]*><\/script>/.exec(html);
@@ -83,6 +83,7 @@ function rewriteIndexHtml(distDir: string, tiers: GateTier[]): void {
          ESM bundle, and each older tier claims what the one above it cannot run. */
       (function () {
         var css, src, pick;
+        var SINK = '${sink}';
         var modern = typeof window.CSSLayerBlockRule !== 'undefined';
         if (modern) {
           css = '${css[1]}';
@@ -103,9 +104,21 @@ ${branches}
           }
           box.appendChild(document.createTextNode('[' + pick + '] ' + title + '\\n' + detail + '\\n\\n'));
         }
+        function send(kind, detail) {
+          if (!SINK) return;
+          try {
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', SINK, true);
+            xhr.setRequestHeader('Content-Type', 'text/plain');
+            xhr.send('[' + pick + '] ' + kind + ': ' + detail + ' | ua=' + navigator.userAgent);
+          } catch (e) {}
+        }
         window.onerror = function (message, source, line, column) {
-          report('boot error', message + '\\n' + (source || '') + ':' + line + ':' + column);
+          var where = (source || '') + ':' + line + ':' + column;
+          report('boot error', message + '\\n' + where);
+          send('boot error', message + ' @ ' + where);
         };
+        send('loading', src);
         var link = document.createElement('link');
         link.rel = 'stylesheet';
         link.href = css;
@@ -125,13 +138,25 @@ ${branches}
         }
         script.onerror = function () {
           report('bundle failed to load', src);
+          send('bundle failed to load', src);
         };
         script.src = src;
         document.body.appendChild(script);
-        setTimeout(function () {
+        function look() {
           var root = document.getElementById('root');
-          if (root && root.firstChild) return;
-          report('nothing rendered', 'ua: ' + navigator.userAgent + '\\nsrc: ' + src);
+          var nodes = root ? root.getElementsByTagName('*').length : -1;
+          var body = document.body;
+          var paint = window.getComputedStyle
+            ? window.getComputedStyle(body).backgroundColor + ' / ' + window.getComputedStyle(body).color
+            : 'unknown';
+          return { nodes: nodes, detail: 'nodes=' + nodes + ' size=' + (root ? root.offsetWidth + 'x' + root.offsetHeight : '?') + ' paint=' + paint };
+        }
+        setTimeout(function () { send('at 10s', look().detail); }, 10000);
+        setTimeout(function () {
+          var seen = look();
+          send('at 30s', seen.detail);
+          if (seen.nodes > 0) return;
+          report('nothing rendered', 'ua: ' + navigator.userAgent + '\\nsrc: ' + src + '\\n' + seen.detail);
         }, 30000);
       })();
     </script>`;
@@ -277,6 +302,9 @@ export interface LegacyFinalizeOptions {
   deep?: boolean;
   /** Tiers to write into index.html's gate. Only the last tier built passes this. */
   gate?: GateTier[];
+  /** Collector the gate POSTs its diagnostics to, for the sets that answer no
+   *  shell and no dlog. Empty in a shipped build. */
+  sink?: string;
 }
 
 /** `distDir` = the shell's absolute dist dir; `chrome` = this tier's floor. */
@@ -286,6 +314,7 @@ export function legacyFinalize({
   dir = 'legacy',
   deep = false,
   gate,
+  sink = '',
 }: LegacyFinalizeOptions): Plugin {
   return {
     name: 'kroma-legacy-finalize',
@@ -304,7 +333,8 @@ export function legacyFinalize({
         this.info?.(`[${dir}] lowered to chromium ${chrome}, theme pinned to ${theme}`);
       }
       if (gate) {
-        rewriteIndexHtml(distDir, gate);
+        rewriteIndexHtml(distDir, gate, sink);
+        if (sink) this.info?.(`[${dir}] gate reports to ${sink}`);
         const inlined = inlineFonts(distDir);
         if (inlined > 0) {
           this.info?.(`[${dir}] inlined ${(inlined / 1024).toFixed(0)} kB of fonts into the CSS`);
