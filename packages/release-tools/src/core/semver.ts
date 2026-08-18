@@ -1,7 +1,15 @@
 import { defaultConfig } from '../config';
 import type { BumpLevel, ParsedCommit, ReleaseConfig } from './types';
 
+export const LEVELS: readonly BumpLevel[] = ['patch', 'minor', 'major'];
+
 const RANK: Record<BumpLevel, number> = { patch: 1, minor: 2, major: 3 };
+
+// Narrow an arbitrary string to a BumpLevel, for validating a manual override
+// (`--bump minor`) without trusting the input.
+export function parseLevel(value: string): BumpLevel | null {
+  return (LEVELS as readonly string[]).includes(value) ? (value as BumpLevel) : null;
+}
 
 // The bump a set of commits earns under a config: the strongest intent among
 // them, or null when nothing is release-worthy. The mapping lives in the config

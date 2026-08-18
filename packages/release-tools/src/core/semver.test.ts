@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseCommits } from './commits';
-import { applyBump, decideBump, nextVersion } from './semver';
+import { applyBump, decideBump, LEVELS, nextVersion, parseLevel } from './semver';
 import type { ParsedCommit, ReleaseConfig } from './types';
 
 const commits = (msgs: string[]) => parseCommits(msgs);
@@ -40,6 +40,15 @@ describe('applyBump', () => {
 
   it('throws on a non-SemVer input', () => {
     expect(() => applyBump('latest', 'patch')).toThrow();
+  });
+});
+
+describe('parseLevel', () => {
+  it('accepts the three levels and rejects anything else', () => {
+    for (const level of LEVELS) expect(parseLevel(level)).toBe(level);
+    expect(parseLevel('MAJOR')).toBeNull();
+    expect(parseLevel('bump')).toBeNull();
+    expect(parseLevel('')).toBeNull();
   });
 });
 

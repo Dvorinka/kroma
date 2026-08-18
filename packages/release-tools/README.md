@@ -51,10 +51,25 @@ different `Summariser`.
 ## CLI
 
 ```
-release-tools --manifest <path> --since <ref> \
-  [--paths a,b] [--changelog CHANGELOG.md] [--summarize] [--write]
+release-tools --manifest <path> [--since <ref>] [--paths a,b] \
+  [--bump patch|minor|major] [--changelog CHANGELOG.md] \
+  [--summarize] [--interactive] [--write]
 ```
 
-`--summarize` shells to the local `claude` CLI (`claude -p`), not the Anthropic
-API; it is best-effort and falls back to the raw commits, so it is never on a CI
-critical path.
+- **`--since` is optional** — it defaults to the newest `vX.Y.Z` tag, so the
+  common case is just `--manifest`.
+- **`--bump`** overrides the commit-derived level when you want to force a
+  patch/minor/major by hand.
+- **`--summarize`** shells to the local `claude` CLI (`claude -p`), not the
+  Anthropic API; best-effort, falls back to the raw commits, never on a CI
+  critical path.
+- **`--interactive` / `-i`** opens a small TUI (built on
+  [`@clack/prompts`](https://github.com/bombshell-dev/clack)): it suggests the
+  bump from the commits, lets you pick the level, optionally runs the AI summary
+  with a spinner, previews the changelog entry, and confirms before writing.
+- **`--write`** applies the change (manifest + optional changelog); without it the
+  entry is printed for inspection.
+
+The interactive flow lives in `io/tui.ts` and only orchestrates — every version
+number and line of changelog still comes from the tested core, so the TUI adds DX
+without adding logic to test.

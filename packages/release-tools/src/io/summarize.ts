@@ -42,7 +42,7 @@ export function cliSummariser(options: CliSummariserOptions = {}): Summariser {
     try {
       const { status, stdout } = run(command, buildArgs(PROMPT + context), timeoutMs);
       if (status !== 0) return null;
-      const first = stdout.trim().split('\n')[0].trim();
+      const first = (stdout.trim().split('\n')[0] ?? '').trim();
       return first.length > 0 ? first : null;
     } catch {
       return null;

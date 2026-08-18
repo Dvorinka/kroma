@@ -7,15 +7,15 @@ import type { ParsedCommit } from './types';
 const HEADER = /^(?<type>[a-z]+)(?:\((?<scope>[^)]+)\))?(?<bang>!)?:[ \t](?<subject>.+)$/;
 
 export function parseCommit(message: string): ParsedCommit | null {
-  const header = message.split('\n', 1)[0];
-  const match = header.match(HEADER);
-  if (!match?.groups) return null;
-  const breaking = match.groups.bang === '!' || /^BREAKING CHANGE:/m.test(message);
+  const header = message.split('\n', 1)[0] ?? '';
+  const groups = header.match(HEADER)?.groups;
+  if (!groups?.type || !groups.subject) return null;
+  const breaking = groups.bang === '!' || /^BREAKING CHANGE:/m.test(message);
   return {
-    type: match.groups.type,
-    scope: match.groups.scope ?? null,
+    type: groups.type,
+    scope: groups.scope ?? null,
     breaking,
-    subject: match.groups.subject.trim(),
+    subject: groups.subject.trim(),
   };
 }
 
