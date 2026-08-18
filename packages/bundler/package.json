@@ -18,6 +18,7 @@
     "./git-history": "./src/git-history.ts",
     "./legacy-css": "./src/legacy-css.ts",
     "./legacy-finalize": "./src/legacy-finalize.ts",
+    "./log-sink-handoff": "./src/log-sink-handoff.ts",
     "./mdx": "./src/mdx.mjs",
     "./mdx-transformer": "./src/mdx-transformer.cjs",
     "./message-subset": "./src/message-subset.ts",

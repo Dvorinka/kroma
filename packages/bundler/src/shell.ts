@@ -6,6 +6,7 @@ import { networkInterfaces } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { collectBuildInfo, productVersion } from '@kroma/build-info';
 import { legacyFinalize } from '@kroma/bundler/legacy-finalize';
+import { logSink } from '@kroma/bundler/log-sink-handoff';
 import { kromaMdx } from '@kroma/bundler/mdx';
 import {
   KROMA_SOURCE_PACKAGES,
@@ -181,7 +182,7 @@ export function tvShellLegacyConfig(
         dir,
         deep,
         gate,
-        sink: process.env.KROMA_TV_LOG_SINK ?? '',
+        sink: logSink(fileURLToPath(new URL('.', shellUrl))),
       }),
     ],
     // `import.meta` doesn't exist in a classic script; the IIFE output substitutes

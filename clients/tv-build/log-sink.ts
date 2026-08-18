@@ -7,6 +7,8 @@
 //   KROMA_TV_LOG_SINK=http://<ip>:4041 bun run build:tizen
 
 import { networkInterfaces } from 'node:os';
+import { join } from 'node:path';
+import { HANDOFF } from '@kroma/bundler/log-sink-handoff';
 
 const port = Number(process.env.PORT ?? 4041);
 
@@ -32,5 +34,13 @@ Bun.serve({
   },
 });
 
-console.log(`[log-sink] listening on http://${lanAddress()}:${port}`);
-console.log(`[log-sink] build the shell with:  KROMA_TV_LOG_SINK=http://${lanAddress()}:${port}`);
+const url = `http://${lanAddress()}:${port}`;
+
+// Left in the shell directory rather than only printed: a build in another
+// terminal picks it up on its own, which is one fewer environment variable to
+// spell right at the moment someone is already debugging a television.
+await Bun.write(join(process.cwd(), HANDOFF), url);
+
+console.log(`[log-sink] listening on ${url}`);
+console.log(`[log-sink] wrote ${HANDOFF}; the next build of this shell reports here`);
+console.log('[log-sink] delete that file (or unset KROMA_TV_LOG_SINK) to ship a silent build');
