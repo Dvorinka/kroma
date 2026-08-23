@@ -2041,6 +2041,8 @@
   "requests.grabAnyway": "Télécharger quand même (rejetée par le filtre qualité)",
   "requests.grabUpgrade": "Remplacer par celle-ci",
   "requests.grabbed": "Téléchargement lancé :",
+  "requests.magnetFallback": "Coller un lien magnet",
+  "requests.magnetAdd": "Ajouter",
   "requests.indexerDown": "hors ligne",
   "requests.indexerFound": "{count} résultats",
   "requests.indexerFound_one": "{count} résultat",
