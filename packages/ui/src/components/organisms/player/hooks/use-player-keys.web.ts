@@ -5,7 +5,7 @@
 
 import { resolveRemoteKey } from '@kroma/core';
 import { useEffect, useEffectEvent } from 'react';
-import { clamp01, sliderToVolume, volumeToSlider } from '#ui/components/organisms/player/lib/fmt';
+import { VOLUME_MAX } from '#ui/components/organisms/player/lib/fmt';
 import {
   type PlayerKeysParams,
   routeRemoteKey,
@@ -64,8 +64,8 @@ function arrowVolumeShortcut(
   e.preventDefault();
   nav.poke();
   const dir = e.key === 'ArrowUp' ? 1 : -1;
-  // Step in perceptual slider space so a nudge feels even across the range.
-  const next = sliderToVolume(clamp01(volumeToSlider(controller.volume) + dir * 0.05));
+  // Step 5% in real volume (not slider space), clamped to 0–VOLUME_MAX.
+  const next = Math.max(0, Math.min(VOLUME_MAX, controller.volume + dir * 0.05));
   controller.setVolume(next);
   return true;
 }
