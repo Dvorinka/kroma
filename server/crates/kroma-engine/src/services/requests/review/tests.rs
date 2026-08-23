@@ -123,6 +123,8 @@ fn a_season_subset_only_materialises_the_seasons_that_were_asked_for() {
             episodes: None,
             status: RequestStatus::Pending,
             requested_by: None,
+            max_resolution: None,
+            max_size_gb: None,
         },
         now_ms(),
     )

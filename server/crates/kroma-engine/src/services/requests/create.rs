@@ -69,6 +69,8 @@ pub fn create_request<S: HostStorage>(state: &S, user: &User, body: &CreateReque
         episodes: asked_episodes,
         status: RequestStatus::Pending,
         requested_by: Some(user.id.clone()),
+        max_resolution: body.max_resolution.clone(),
+        max_size_gb: body.max_size_gb,
     };
     db::insert_request(state.db(), &new, now_ms())?;
     publish(state, &id, RequestStatus::Pending);

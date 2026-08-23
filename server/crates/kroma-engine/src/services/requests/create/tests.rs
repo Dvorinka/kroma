@@ -26,6 +26,8 @@ fn merge_show_request_widens_pending_seasons_without_materializing() {
             episodes: None,
             status: RequestStatus::Pending,
             requested_by: None,
+            max_resolution: None,
+            max_size_gb: None,
         },
         now_ms(),
     )
@@ -58,6 +60,8 @@ fn merge_show_request_no_change_does_not_publish() {
             episodes: None,
             status: RequestStatus::Pending,
             requested_by: None,
+            max_resolution: None,
+            max_size_gb: None,
         },
         now_ms(),
     )
@@ -81,6 +85,8 @@ fn creating_a_request_without_tmdb_configured_says_so() {
             tmdb_id: 42,
             seasons: None,
             episodes: None,
+            max_resolution: None,
+            max_size_gb: None,
         },
     )
     .unwrap_err()

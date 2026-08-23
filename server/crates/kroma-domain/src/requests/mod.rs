@@ -135,6 +135,12 @@ pub struct MediaRequest {
     // never serialized to clients.
     #[serde(skip)]
     pub last_refresh_at: Option<i64>,
+    // Per-request quality preferences. `None` = use the system-wide defaults.
+    // When set, these override the admin settings for this request only.
+    #[serde(default)]
+    pub max_resolution: Option<String>,
+    #[serde(default)]
+    pub max_size_gb: Option<u32>,
 }
 
 /// Status tallies for the admin queue's filter chips.
@@ -180,6 +186,11 @@ pub struct CreateRequestBody {
     // `None`/empty = no per-episode ask.
     #[serde(default)]
     pub episodes: Option<Vec<EpisodeRef>>,
+    // Per-request quality preferences. `None` = use the system-wide defaults.
+    #[serde(default)]
+    pub max_resolution: Option<String>,
+    #[serde(default)]
+    pub max_size_gb: Option<u32>,
 }
 
 /// `PUT /api/requests/:id/coverage` body: exactly what a show request covers

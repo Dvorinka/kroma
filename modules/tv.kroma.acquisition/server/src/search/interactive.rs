@@ -147,7 +147,7 @@ pub fn interactive_search<S: HostStorage>(
     }
     search_wanted.extend(rows_outside_request(state, &req, &search_wanted, scope)?);
 
-    let profile = crate::profile_from_settings(state);
+    let profile = crate::profile_for_request(&crate::profile_from_settings(state), &req);
     let targets = targets_for_scope(req.kind, &search_wanted, &today_ymd(), scope);
     if targets.is_empty() {
         return Ok(InteractiveSearchView {

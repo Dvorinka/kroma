@@ -81,6 +81,8 @@ pub(super) fn insert_req_by(
             episodes: None,
             status,
             requested_by: requested_by.map(str::to_string),
+            max_resolution: None,
+            max_size_gb: None,
         },
         now_ms(),
     )

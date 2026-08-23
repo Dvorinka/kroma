@@ -237,6 +237,8 @@ mod tests {
                 episodes: None,
                 status: RequestStatus::Approved,
                 requested_by: None,
+                max_resolution: None,
+                max_size_gb: None,
             },
             0,
         )

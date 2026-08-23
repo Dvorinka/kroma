@@ -165,6 +165,7 @@ fn search_request<S: kroma_module_sdk::host::HostStorage>(
     let wanted = db::wanted_for_request(&conn, request_id)?;
     drop(conn);
 
+    let profile = crate::profile_for_request(profile, &req);
     summary.requests += 1;
     let targets = targets_for_wanted(req.kind, &wanted, &today_ymd());
     // Rows a pack grab already covered this pass (skip episode targets).
@@ -180,7 +181,7 @@ fn search_request<S: kroma_module_sdk::host::HostStorage>(
         summary.targets += 1;
         searched.extend(target_rows.iter().cloned());
 
-        let outcome = best_candidate(state, indexers, st, profile, req.tmdb_id, &mut summary.errors);
+        let outcome = best_candidate(state, indexers, st, &profile, req.tmdb_id, &mut summary.errors);
         let Some((candidate, score)) = outcome.best else {
             // A silent empty pass reads the same as a broken indexer; say which
             // it was, since this is the only trace the admin ever gets.

@@ -40,6 +40,8 @@ pub(super) fn new_req(id: &str, kind: RequestKind, tmdb: u64, seasons: Option<Ve
         episodes: None,
         status: RequestStatus::Pending,
         requested_by: None,
+        max_resolution: None,
+        max_size_gb: None,
     }
 }
 

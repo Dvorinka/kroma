@@ -34,6 +34,8 @@ pub(super) fn req(kind: RequestKind, status: RequestStatus) -> MediaRequest {
         air_status: None,
         next_air_date: None,
         last_refresh_at: None,
+        max_resolution: None,
+        max_size_gb: None,
     }
 }
 
@@ -168,7 +170,14 @@ pub(super) fn episodes(nums: &[u32], air: &str) -> serde_json::Value {
 
 pub(super) fn body(user: &str) -> CreateRequestBody {
     let _ = user;
-    CreateRequestBody { kind: RequestKind::Movie, tmdb_id: 603, seasons: None, episodes: None }
+    CreateRequestBody {
+        kind: RequestKind::Movie,
+        tmdb_id: 603,
+        seasons: None,
+        episodes: None,
+        max_resolution: None,
+        max_size_gb: None,
+    }
 }
 
 pub(super) fn breaking_bad() -> FakeTmdb {
@@ -181,5 +190,12 @@ pub(super) fn breaking_bad() -> FakeTmdb {
 }
 
 pub(super) fn show_body(seasons: Option<Vec<u32>>, eps: Option<Vec<EpisodeRef>>) -> CreateRequestBody {
-    CreateRequestBody { kind: RequestKind::Show, tmdb_id: 1396, seasons, episodes: eps }
+    CreateRequestBody {
+        kind: RequestKind::Show,
+        tmdb_id: 1396,
+        seasons,
+        episodes: eps,
+        max_resolution: None,
+        max_size_gb: None,
+    }
 }

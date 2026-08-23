@@ -12,6 +12,7 @@ import { SeasonSection } from '#web/features/catalog/episode-list';
 import { TitleHero } from '#web/features/catalog/title-hero';
 import { TreatmentsPanel } from '#web/features/catalog/treatments-panel';
 import { useTitleRequest } from '#web/features/catalog/use-title-request';
+import { QualityPrefDialog } from '#web/features/requests/quality-pref-dialog';
 import { useAuth } from '#web/shared/lib/auth';
 import { useMyList } from '#web/shared/lib/mylist';
 import { userQueries } from '#web/shared/lib/queries';
@@ -137,12 +138,15 @@ export function TitleDetail({ initial }: Readonly<{ initial: TitleView }>) {
     error,
     selected,
     pendingEps,
+    qualityOpen,
     toggleEpisode,
     requestSelected,
     requestSeason,
     requestAllSeasons,
+    requestAllSeasonsWithPref,
     clearSelection,
     onRequestClick,
+    closeQualityDialog,
   } = useTitleRequest(initial);
   const { isWatched, toggleWatched } = useWatched();
   const { inList, toggle: toggleList } = useMyList();
@@ -228,6 +232,12 @@ export function TitleDetail({ initial }: Readonly<{ initial: TitleView }>) {
         onRequestAll={requestAllSeasons}
         onClearSelection={clearSelection}
         onOpenSimilar={openSimilar}
+      />
+
+      <QualityPrefDialog
+        open={qualityOpen}
+        onClose={closeQualityDialog}
+        onConfirm={requestAllSeasonsWithPref}
       />
     </main>
   );

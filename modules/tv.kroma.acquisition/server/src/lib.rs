@@ -82,6 +82,27 @@ pub fn profile_from_settings<S: HostStorage>(state: &S) -> Profile {
     }
 }
 
+/// Override the system-wide profile with a request's per-request quality
+/// preferences. `None` fields on the request fall back to the system default.
+pub fn profile_for_request(base: &Profile, req: &kroma_module_sdk::db::MediaRequest) -> Profile {
+    let mut p = base.clone();
+    if let Some(res) = req.max_resolution.as_deref() {
+        p.resolution = match res {
+            "720p" => Res::R720,
+            "2160p" => Res::R2160,
+            _ => Res::R1080,
+        };
+    }
+    if let Some(gb) = req.max_size_gb {
+        let bytes = (gb as u64) * GB;
+        // A per-request cap applies to both movies and episodes: the requester
+        // said "don't download anything bigger than this for me."
+        p.max_size_bytes_movie = bytes;
+        p.max_size_bytes_episode = bytes;
+    }
+    p
+}
+
 /// Run one query against one indexer, whatever its kind, returning normalized
 /// releases. This is the single dispatch point the search pipelines call; the
 /// native-vs-Torznab dispatch lives behind the `indexer-search` point, so this

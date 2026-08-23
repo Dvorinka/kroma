@@ -362,6 +362,9 @@ pub(crate) const SCHEMA: &str = "
         air_status     TEXT,
         next_air_date  TEXT,
         last_refresh_at INTEGER,
+        -- Per-request quality preferences (NULL = use system-wide defaults).
+        max_resolution TEXT,
+        max_size_gb    INTEGER,
         created_at   INTEGER NOT NULL,
         updated_at   INTEGER NOT NULL
     );

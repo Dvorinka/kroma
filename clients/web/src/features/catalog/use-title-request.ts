@@ -3,6 +3,7 @@ import { useT } from '@kroma/ui';
 import { useState } from 'react';
 import { EPISODES_ANCHOR } from '#web/features/catalog/episode-list';
 import { epKey, toEpisodeRefs, toggle } from '#web/features/catalog/episode-selection';
+import type { QualityPref } from '#web/features/requests/quality-pref-dialog';
 import { useAuth } from '#web/shared/lib/auth';
 import type { TitleView } from '#web/shared/lib/titleView';
 
@@ -35,12 +36,16 @@ export interface TitleRequestState {
   error: string | null;
   selected: Set<string>;
   pendingEps: Set<string>;
+  qualityOpen: boolean;
   toggleEpisode: (season: number, episode: number) => void;
   requestSelected: () => void;
   requestSeason: (season: number) => void;
   requestAllSeasons: () => void;
+  requestAllSeasonsWithPref: (pref: QualityPref) => void;
   clearSelection: () => void;
   onRequestClick: () => void;
+  openQualityDialog: () => void;
+  closeQualityDialog: () => void;
 }
 
 /** Owns the acquisition-request half of the detail page: the locally patched
@@ -53,13 +58,21 @@ export function useTitleRequest(initial: TitleView): TitleRequestState {
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [pendingEps, setPendingEps] = useState<Set<string>>(() => new Set());
+  const [qualityOpen, setQualityOpen] = useState(false);
 
-  const doRequest = (seasons: number[] | null, episodes?: EpisodeRef[]) => {
+  const doRequest = (seasons: number[] | null, episodes?: EpisodeRef[], pref?: QualityPref) => {
     if (view.tmdbId == null) return;
     setBusy(true);
     setError(null);
     client
-      .createRequest({ kind: view.kind, tmdbId: view.tmdbId, seasons, episodes })
+      .createRequest({
+        kind: view.kind,
+        tmdbId: view.tmdbId,
+        seasons,
+        episodes,
+        maxResolution: pref?.maxResolution ?? undefined,
+        maxSizeGb: pref?.maxSizeGb ?? undefined,
+      })
       .then((req) => {
         setView((v) => nextViewAfterRequest(v, req.status, seasons, episodes));
         if (episodes?.length) setPendingEps((prev) => addPendingEpisodes(prev, episodes));
@@ -77,11 +90,15 @@ export function useTitleRequest(initial: TitleView): TitleRequestState {
   };
   const requestSeason = (season: number) => doRequest([season]);
   const requestAllSeasons = () => doRequest(null);
+  const requestAllSeasonsWithPref = (pref: QualityPref) => {
+    setQualityOpen(false);
+    doRequest(null, undefined, pref);
+  };
   const onRequestClick = () => {
     // With no season list there is no section to scroll to and nothing to pick,
-    // so the button asks for the whole show rather than doing nothing at all.
+    // so the button opens the quality dialog to request the whole title.
     if (view.kind !== 'show' || view.seasons.length === 0) {
-      doRequest(null);
+      setQualityOpen(true);
       return;
     }
     document.getElementById(EPISODES_ANCHOR)?.scrollIntoView({ behavior: 'smooth' });
@@ -93,11 +110,15 @@ export function useTitleRequest(initial: TitleView): TitleRequestState {
     error,
     selected,
     pendingEps,
+    qualityOpen,
     toggleEpisode,
     requestSelected,
     requestSeason,
     requestAllSeasons,
+    requestAllSeasonsWithPref,
     clearSelection: () => setSelected(new Set()),
     onRequestClick,
+    openQualityDialog: () => setQualityOpen(true),
+    closeQualityDialog: () => setQualityOpen(false),
   };
 }

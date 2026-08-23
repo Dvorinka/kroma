@@ -54,6 +54,8 @@ export const MediaRequest = z.object({
   progress: z.number().nullable(),
   airStatus: z.string().nullable(),
   nextAirDate: z.string().nullable(),
+  maxResolution: z.string().nullable().optional(),
+  maxSizeGb: z.number().nullable().optional(),
 });
 export type MediaRequest = z.infer<typeof MediaRequest>;
 
@@ -87,6 +89,8 @@ export const CreateRequestBody = z.object({
   tmdbId: z.number(),
   seasons: z.array(z.number()).nullable(),
   episodes: z.array(EpisodeRef).nullish(),
+  maxResolution: z.string().nullish(),
+  maxSizeGb: z.number().nullish(),
 });
 export type CreateRequestBody = z.infer<typeof CreateRequestBody>;
 

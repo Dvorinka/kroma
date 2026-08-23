@@ -140,4 +140,7 @@ pub(crate) const MIGRATIONS: &[&str] = &[
     // recomputed logical id that orphaned on a title-parse mismatch; replaced
     // by `acq_file_tmdb(abs_path)` (created in SCHEMA above).
     "DROP TABLE IF EXISTS acq_tmdb",
+    // Per-request quality preferences (NULL = use system-wide defaults).
+    "ALTER TABLE requests ADD COLUMN max_resolution TEXT",
+    "ALTER TABLE requests ADD COLUMN max_size_gb INTEGER",
 ];

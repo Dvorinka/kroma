@@ -9,7 +9,11 @@
 use rusqlite::OptionalExtension;
 
 use super::*;
-use kroma_domain::{EpisodeRef, MediaRequest, RequestKind, RequestStatus};
+use kroma_domain::{EpisodeRef, RequestKind, RequestStatus};
+
+// Re-exported so module sidecars can reference the type through
+// `kroma_module_sdk::db::MediaRequest` without depending on `kroma_domain`.
+pub use kroma_domain::MediaRequest;
 
 mod availability;
 mod calendar;
@@ -29,7 +33,7 @@ pub use wanted::*;
 // New columns must be appended, never inserted: callers read rows by position.
 const REQUEST_COLS: &str = "r.id, r.kind, r.tmdb_id, r.title, r.year, r.poster_url, r.seasons, \
     r.status, r.requested_by, u.username, r.reviewed_by, r.note, r.created_at, r.updated_at, \
-    r.episodes, r.air_status, r.next_air_date, r.last_refresh_at";
+    r.episodes, r.air_status, r.next_air_date, r.last_refresh_at, r.max_resolution, r.max_size_gb";
 
 fn row_to_request(r: &Row) -> rusqlite::Result<MediaRequest> {
     let kind: String = r.get(1)?;
@@ -56,6 +60,8 @@ fn row_to_request(r: &Row) -> rusqlite::Result<MediaRequest> {
         air_status: r.get(15)?,
         next_air_date: r.get(16)?,
         last_refresh_at: r.get(17)?,
+        max_resolution: r.get(18)?,
+        max_size_gb: r.get::<_, Option<i64>>(19)?.map(|v| v as u32),
     })
 }
 
@@ -70,6 +76,8 @@ pub struct NewRequest {
     pub episodes: Option<Vec<EpisodeRef>>,
     pub status: RequestStatus,
     pub requested_by: Option<String>,
+    pub max_resolution: Option<String>,
+    pub max_size_gb: Option<u32>,
 }
 
 pub fn insert_request(pool: &Pool, req: &NewRequest, now_ms: i64) -> Result<()> {
@@ -77,8 +85,9 @@ pub fn insert_request(pool: &Pool, req: &NewRequest, now_ms: i64) -> Result<()> 
     let seasons = req.seasons.as_ref().map(|s| serde_json::to_string(s).unwrap_or_default());
     let episodes = req.episodes.as_ref().map(|e| serde_json::to_string(e).unwrap_or_default());
     conn.execute(
-        "INSERT INTO requests (id, kind, tmdb_id, title, year, poster_url, seasons, status, requested_by, episodes, created_at, updated_at) \
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?11)",
+        "INSERT INTO requests (id, kind, tmdb_id, title, year, poster_url, seasons, status, \
+         requested_by, episodes, created_at, updated_at, max_resolution, max_size_gb) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?11, ?12, ?13)",
         params![
             req.id,
             req.kind.as_str(),
@@ -90,7 +99,9 @@ pub fn insert_request(pool: &Pool, req: &NewRequest, now_ms: i64) -> Result<()> 
             req.status.as_str(),
             req.requested_by,
             episodes,
-            now_ms
+            now_ms,
+            req.max_resolution,
+            req.max_size_gb.map(|v| v as i64),
         ],
     )?;
     Ok(())
