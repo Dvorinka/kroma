@@ -217,10 +217,25 @@ fn collect_search_hits<S: HostStorage>(
     tmdb_id: u64,
 ) -> (Vec<CachedRelease>, Vec<crate::dtos::IndexerReport>) {
     let (hits, reports) = crate::search::sweep::sweep(indexers, |indexer| {
+        // Fan the targets out within each indexer rather than walking them one
+        // by one. A TV show with eight episodes builds nine targets (a season
+        // pack plus eight episodes); at ~30s per Torznab query that is 270s
+        // sequential vs ~30s parallel, which is the difference between a search
+        // that looks hung and one that answers.
+        let results: Vec<(usize, anyhow::Result<Vec<Release>>)> = std::thread::scope(|scope| {
+            let handles: Vec<_> = targets
+                .iter()
+                .enumerate()
+                .map(|(target, st)| {
+                    scope.spawn(move || (target, crate::search_indexer(state, indexer, &st.query)))
+                })
+                .collect();
+            handles.into_iter().map(|h| h.join().unwrap_or((0, Err(anyhow::anyhow!("target search panicked"))))).collect()
+        });
         let mut found: Vec<Hit> = Vec::new();
         let mut errors: Vec<String> = Vec::new();
-        for (target, st) in targets.iter().enumerate() {
-            match crate::search_indexer(state, indexer, &st.query) {
+        for (target, result) in results {
+            match result {
                 Ok(releases) => found.extend(releases.into_iter().map(|release| Hit {
                     indexer_id: indexer.id.clone(),
                     target,
@@ -229,8 +244,6 @@ fn collect_search_hits<S: HostStorage>(
                 Err(e) => errors.push(format!("{e:#}")),
             }
         }
-        // One target failing out of several is a partial answer, not a broken
-        // tracker: only a sweep that found nothing at all reads as an error.
         if found.is_empty() && !errors.is_empty() {
             anyhow::bail!("{}", errors.join("; "));
         }
