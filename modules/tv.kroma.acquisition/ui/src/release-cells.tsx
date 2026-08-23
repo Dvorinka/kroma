@@ -6,7 +6,7 @@
 // same three facts in the same three columns. They were written twice.
 
 import { formatBytes } from '@kroma/core';
-import { TABULAR, Table, useT } from '@kroma/module-sdk';
+import { TABULAR, Table, useLocale, useT } from '@kroma/module-sdk';
 import { Icon, Row, Text } from '@kroma/ui/kit';
 
 export function ReleaseFacts({
@@ -22,6 +22,7 @@ export function ReleaseFacts({
   seeders: number | null;
 }>) {
   const t = useT();
+  const locale = useLocale();
   return (
     <>
       <Table.Cell wide>
@@ -43,7 +44,7 @@ export function ReleaseFacts({
       </Table.Cell>
       <Table.Cell wide>
         <Text variant="meta" color="textDim" style={TABULAR}>
-          {sizeBytes != null ? formatBytes(sizeBytes) : '—'}
+          {sizeBytes != null ? formatBytes(sizeBytes, locale) : '—'}
         </Text>
       </Table.Cell>
       <Table.Cell wide>

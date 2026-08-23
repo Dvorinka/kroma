@@ -429,7 +429,7 @@ describe('resolveImageUrl', () => {
 });
 
 describe('decimal', () => {
-  it('uses a comma and one decimal place by default', () => {
+  it('uses a comma and one decimal place by default (French)', () => {
     expect(decimal(1.5)).toBe('1,5');
     expect(decimal(2)).toBe('2,0');
   });
@@ -439,10 +439,15 @@ describe('decimal', () => {
     expect(decimal(Math.PI, 0)).toBe('3');
     expect(decimal(Math.E, 3)).toBe('2,718');
   });
+
+  it('uses a period separator for English', () => {
+    expect(decimal(1.5, 1, 'en')).toBe('1.5');
+    expect(decimal(Math.PI, 2, 'en')).toBe('3.14');
+  });
 });
 
 describe('formatBytes', () => {
-  it('returns "0 o" for zero and negatives', () => {
+  it('returns "0 o" for zero and negatives (French default)', () => {
     expect(formatBytes(0)).toBe('0 o');
     expect(formatBytes(-100)).toBe('0 o');
   });
@@ -466,5 +471,16 @@ describe('formatBytes', () => {
 
   it('caps the unit at Po (petabytes) for huge inputs', () => {
     expect(formatBytes(1024 ** 6)).toBe('1024 Po');
+  });
+
+  it('uses English units and period decimal when locale is "en"', () => {
+    expect(formatBytes(0, 'en')).toBe('0 B');
+    expect(formatBytes(500, 'en')).toBe('500 B');
+    expect(formatBytes(1024, 'en')).toBe('1 KB');
+    expect(formatBytes(1024 ** 2, 'en')).toBe('1.0 MB');
+    expect(formatBytes(5 * 1024 ** 2, 'en')).toBe('5.0 MB');
+    expect(formatBytes(1024 ** 3, 'en')).toBe('1.0 GB');
+    expect(formatBytes(150 * 1024 ** 2, 'en')).toBe('150 MB');
+    expect(formatBytes(1024 ** 5, 'en')).toBe('1.0 PB');
   });
 });

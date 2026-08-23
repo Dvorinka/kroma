@@ -5,7 +5,7 @@
 
 import { formatBytes } from '@kroma/core';
 import type { TorrentAnalysis, TorrentFileView } from '@kroma/module-acquisition/schemas';
-import { useT } from '@kroma/module-sdk';
+import { useLocale, useT } from '@kroma/module-sdk';
 import { Box, Button, color, Row, styles, Text } from '@kroma/ui/kit';
 import type { CSSProperties } from 'react';
 
@@ -111,6 +111,7 @@ function FileRow({
   checked,
   onToggle,
 }: Readonly<{ f: TorrentFileView; checked: boolean; onToggle: () => void }>) {
+  const locale = useLocale();
   const label =
     f.episode != null
       ? `S${String(f.season ?? 0).padStart(2, '0')}E${String(f.episode).padStart(2, '0')}`
@@ -133,7 +134,7 @@ function FileRow({
         </Text>
       ) : null}
       <Text variant="meta" color="textDim" shrink={0} style={s.tabular}>
-        {formatBytes(f.sizeBytes)}
+        {formatBytes(f.sizeBytes, locale)}
       </Text>
     </label>
   );

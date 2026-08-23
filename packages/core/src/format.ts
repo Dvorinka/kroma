@@ -1,5 +1,6 @@
 import { type AudioTrack, artworkWidth, type MediaItem, type VideoTrack } from '@kroma/client';
 import type { Translate } from './i18n';
+import { DEFAULT_LOCALE, type Locale } from './i18n-locales';
 import { langKey } from './lang';
 import { match } from './match';
 import { formatRuntime } from './player';
@@ -129,18 +130,20 @@ export function resolveImageUrl(apiBase: string, url: string | null | undefined)
   return /^https?:\/\//.test(url) ? url : `${apiBase}${url}`;
 }
 
-/** French-style decimal: a comma separator. */
-export function decimal(n: number, digits = 1): string {
-  return n.toFixed(digits).replace('.', ',');
+/** Locale-aware decimal: comma separator for French, period for English. */
+export function decimal(n: number, digits = 1, locale: Locale = DEFAULT_LOCALE): string {
+  const s = n.toFixed(digits);
+  return locale === 'fr' ? s.replace('.', ',') : s;
 }
 
-/** Human byte size in French units: o / Ko / Mo / Go / To / Po. */
-export function formatBytes(bytes: number): string {
-  if (!bytes || bytes < 0) return '0 o';
-  const units = ['o', 'Ko', 'Mo', 'Go', 'To', 'Po'];
+/** Human byte size, locale-aware: B/KB/MB/GB/TB/PB for English, o/Ko/Mo/Go/To/Po for French. */
+export function formatBytes(bytes: number, locale: Locale = DEFAULT_LOCALE): string {
+  const units =
+    locale === 'fr' ? ['o', 'Ko', 'Mo', 'Go', 'To', 'Po'] : ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+  if (!bytes || bytes < 0) return `0 ${units[0]}`;
   const i = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
   const v = bytes / 1024 ** i;
-  return `${decimal(v, v >= 100 || i <= 1 ? 0 : 1)} ${units[i]}`;
+  return `${decimal(v, v >= 100 || i <= 1 ? 0 : 1, locale)} ${units[i]}`;
 }
 
 /** Player scrub-bar timecode "1:04:07" / "4:07" (no leading hours when < 1h). */

@@ -8,6 +8,7 @@ import {
   ModuleFailed,
   ModuleLoading,
   useCap,
+  useLocale,
   usePoll,
   useServerEvents,
   useT,
@@ -48,6 +49,7 @@ const WIPE_BOX: CSSProperties = { width: 16, height: 16, accentColor: 'var(--kro
  *  export so the module runtime can `React.lazy` it into its own chunk. */
 export default function DownloadsPage() {
   const t = useT();
+  const locale = useLocale();
   const torrents = useTorrentsApi();
   const canSettings = useCap('settings.manage');
   const canQueue = useCap('requests.manage') || canSettings;
@@ -151,11 +153,11 @@ export default function DownloadsPage() {
           </StatCard.Root>
           <StatCard.Root>
             <StatCard.Label>{t('downloads.statDown')}</StatCard.Label>
-            <StatCard.Value>{`${formatBytes(totalDown)}/s`}</StatCard.Value>
+            <StatCard.Value>{`${formatBytes(totalDown, locale)}/s`}</StatCard.Value>
           </StatCard.Root>
           <StatCard.Root>
             <StatCard.Label>{t('downloads.statUp')}</StatCard.Label>
-            <StatCard.Value>{`${formatBytes(totalUp)}/s`}</StatCard.Value>
+            <StatCard.Value>{`${formatBytes(totalUp, locale)}/s`}</StatCard.Value>
           </StatCard.Root>
           <StatCard.Root>
             <StatCard.Label>{t('downloads.statHistory')}</StatCard.Label>

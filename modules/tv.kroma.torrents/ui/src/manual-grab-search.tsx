@@ -4,7 +4,7 @@
 
 import { formatBytes } from '@kroma/core';
 import type { ManualReleaseView } from '@kroma/module-acquisition/schemas';
-import { useT } from '@kroma/module-sdk';
+import { useLocale, useT } from '@kroma/module-sdk';
 import { Box, Button, Field, Focusable, Icon, Row, sv, Text } from '@kroma/ui/kit';
 import type { CSSProperties } from 'react';
 
@@ -124,6 +124,7 @@ function ResultRow({
   onPick,
 }: Readonly<{ r: ManualReleaseView; last: boolean; onPick: () => void }>) {
   const t = useT();
+  const locale = useLocale();
   return (
     <Focusable sv={resultRow} vars={{ last }} label={r.title} onPress={onPick}>
       <Box minW={0} flex>
@@ -146,7 +147,7 @@ function ResultRow({
           ) : null}
           {r.sizeBytes != null ? (
             <Text variant="meta" color="textDim">
-              {formatBytes(r.sizeBytes)}
+              {formatBytes(r.sizeBytes, locale)}
             </Text>
           ) : null}
           {r.seeders != null ? (
