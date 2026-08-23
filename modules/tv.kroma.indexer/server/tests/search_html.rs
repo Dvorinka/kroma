@@ -29,7 +29,7 @@ fn builds_search_request_from_query() {
     assert_eq!(reqs.len(), 1);
     let r = &reqs[0];
     // Keywords templated in, sort from config, freeleech off -> no &fl=1.
-    assert_eq!(r.url, "https://tracker.example/browse.php?q=The Matrix 1999&sort=seeders");
+    assert_eq!(r.url, "https://tracker.example/browse.php?q=The%20Matrix%201999&sort=seeders");
     assert_eq!(r.method, "get");
     assert_eq!(r.response_kind, "html");
 }
