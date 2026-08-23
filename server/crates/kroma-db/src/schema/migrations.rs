@@ -143,4 +143,7 @@ pub(crate) const MIGRATIONS: &[&str] = &[
     // Per-request quality preferences (NULL = use system-wide defaults).
     "ALTER TABLE requests ADD COLUMN max_resolution TEXT",
     "ALTER TABLE requests ADD COLUMN max_size_gb INTEGER",
+    // Watch later: user's "to watch" queue, separate from my_list bookmarks.
+    "CREATE TABLE IF NOT EXISTS watch_later (user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, item_id TEXT NOT NULL, added_at TEXT NOT NULL, PRIMARY KEY (user_id, item_id))",
+    "CREATE INDEX IF NOT EXISTS idx_watch_later_user ON watch_later(user_id, added_at DESC)",
 ];
