@@ -5,6 +5,7 @@
 
 import { resolveRemoteKey } from '@kroma/core';
 import { useEffect, useEffectEvent } from 'react';
+import { clamp01, sliderToVolume, volumeToSlider } from '#ui/components/organisms/player/lib/fmt';
 import {
   type PlayerKeysParams,
   routeRemoteKey,
@@ -49,6 +50,26 @@ function letterShortcut(
   return false;
 }
 
+// On the web (flags.volume = true), ArrowUp/Down adjust volume globally — no
+// need to focus the volume control first. Skipped when a panel is open so
+// D-pad navigation inside the panel still works.
+function arrowVolumeShortcut(
+  e: KeyboardEvent,
+  nav: PlayerNav,
+  controller: PlayerController,
+  flags: PlayerFlags,
+): boolean {
+  if (!flags.volume || nav.overlay) return false;
+  if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return false;
+  e.preventDefault();
+  nav.poke();
+  const dir = e.key === 'ArrowUp' ? 1 : -1;
+  // Step in perceptual slider space so a nudge feels even across the range.
+  const next = sliderToVolume(clamp01(volumeToSlider(controller.volume) + dir * 0.05));
+  controller.setVolume(next);
+  return true;
+}
+
 /** The single window keydown router. One stable listener always sees the latest
  * render, so re-renders never re-subscribe. */
 export function usePlayerKeys(params: Readonly<PlayerKeysParams>): void {
@@ -73,6 +94,8 @@ export function usePlayerKeys(params: Readonly<PlayerKeysParams>): void {
     }
 
     if (letterShortcut(e, nav, controller, flags)) return;
+
+    if (arrowVolumeShortcut(e, nav, controller, flags)) return;
 
     const remote = resolveRemoteKey(e);
     if (!remote) return;
