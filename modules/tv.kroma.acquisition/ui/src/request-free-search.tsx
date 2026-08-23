@@ -52,7 +52,12 @@ export function RequestFreeSearch({
   const acquisition = useAcquisitionApi();
   const search = useFreeSearch(acquisition, title, defaultTarget(kind), season);
   const [grabbed, setGrabbed] = useState<{ text: string; error: boolean } | null>(null);
+  const [indexerFilter, setIndexerFilter] = useState<string | null>(null);
   const preview = queryPreview(search.query, search.target, search.season, search.episode);
+
+  const toggleIndexer = (id: string | null) => {
+    setIndexerFilter((prev) => (prev === id ? null : id));
+  };
 
   const grab = (release: ManualReleaseView) => {
     setGrabbed(null);
@@ -168,12 +173,17 @@ export function RequestFreeSearch({
       ) : null}
       {!search.busy && search.view ? (
         <Box gap={12}>
-          <IndexerReportStrip indexers={search.view.indexers} />
+          <IndexerReportStrip
+            indexers={search.view.indexers}
+            activeIndexer={indexerFilter}
+            onToggleIndexer={toggleIndexer}
+          />
           <ManualReleaseTable
             releases={search.view.releases}
             canGrab={canGrab}
             grabbing={search.grabbing}
             onGrab={grab}
+            indexerFilter={indexerFilter}
           />
           {search.view.releases.length === 0 ? (
             <MagnetPasteFallback

@@ -3,6 +3,7 @@
 // asking of the table.
 
 import type { ScoredReleaseView } from '@kroma/core';
+import type { ManualReleaseView } from './schemas';
 
 export type ReleaseSort = 'score' | 'size' | 'seeders' | 'date';
 export type ReleaseFilter = 'accepted' | 'rejected' | 'all';
@@ -10,10 +11,17 @@ export type ReleaseFilter = 'accepted' | 'rejected' | 'all';
 export function filterReleases(
   releases: readonly ScoredReleaseView[],
   filter: ReleaseFilter,
+  indexerId?: string | null,
 ): ScoredReleaseView[] {
-  if (filter === 'all') return [...releases];
-  const accepted = filter === 'accepted';
-  return releases.filter((r) => (r.score != null) === accepted);
+  let out = releases;
+  if (filter !== 'all') {
+    const accepted = filter === 'accepted';
+    out = out.filter((r) => (r.score != null) === accepted);
+  }
+  if (indexerId) {
+    out = out.filter((r) => r.indexerId === indexerId);
+  }
+  return [...out];
 }
 
 // A rejected release has no score, so it sorts last whatever the column: it is
@@ -48,4 +56,34 @@ export function targetLabel(r: ScoredReleaseView): string | null {
   const s = String(r.season ?? 0).padStart(2, '0');
   if (r.target === 'season') return `S${s}`;
   return `S${s}E${String(r.episodes?.[0] ?? 0).padStart(2, '0')}`;
+}
+
+// --- Free-text (manual) search sorting ---
+
+export type ManualSort = 'seeders' | 'size' | 'date';
+
+export function filterManualReleases(
+  releases: readonly ManualReleaseView[],
+  indexerId?: string | null,
+): ManualReleaseView[] {
+  if (!indexerId) return [...releases];
+  return releases.filter((r) => r.indexerId === indexerId);
+}
+
+export function sortManualReleases(
+  releases: readonly ManualReleaseView[],
+  sort: ManualSort,
+): ManualReleaseView[] {
+  return [...releases].sort((a, b) => manualRank(b, sort) - manualRank(a, sort));
+}
+
+function manualRank(r: ManualReleaseView, sort: ManualSort): number {
+  switch (sort) {
+    case 'size':
+      return r.sizeBytes ?? 0;
+    case 'seeders':
+      return r.seeders ?? 0;
+    case 'date':
+      return r.publishedAt ? Date.parse(r.publishedAt) || 0 : 0;
+  }
 }

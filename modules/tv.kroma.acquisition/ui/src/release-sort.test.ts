@@ -1,6 +1,13 @@
 import type { ScoredReleaseView } from '@kroma/core';
 import { describe, expect, it } from 'vitest';
-import { filterReleases, sortReleases, targetLabel } from './release-sort';
+import {
+  filterManualReleases,
+  filterReleases,
+  sortManualReleases,
+  sortReleases,
+  targetLabel,
+} from './release-sort';
+import type { ManualReleaseView } from './schemas';
 
 function release(over: Partial<ScoredReleaseView>): ScoredReleaseView {
   return {
@@ -81,5 +88,91 @@ describe('targetLabel', () => {
     expect(targetLabel(release({ target: 'movie' }))).toBeNull();
     expect(targetLabel(release({ target: 'season', season: 3 }))).toBe('S03');
     expect(targetLabel(release({ target: 'episode', season: 3, episodes: [7] }))).toBe('S03E07');
+  });
+});
+
+describe('filterReleases with indexer', () => {
+  const list = [
+    release({ guid: 'a', indexerId: 'yts' as ScoredReleaseView['indexerId'] }),
+    release({ guid: 'b', indexerId: 'tpb' as ScoredReleaseView['indexerId'] }),
+  ];
+
+  it('narrows to one indexer when an id is given', () => {
+    expect(filterReleases(list, 'all', 'yts').map((r) => r.guid)).toEqual(['a']);
+    expect(filterReleases(list, 'all', 'tpb').map((r) => r.guid)).toEqual(['b']);
+  });
+
+  it('returns everything when the id is null or omitted', () => {
+    expect(filterReleases(list, 'all', null)).toHaveLength(2);
+    expect(filterReleases(list, 'all')).toHaveLength(2);
+  });
+});
+
+function manualRelease(over: Partial<ManualReleaseView>): ManualReleaseView {
+  return {
+    title: 'R',
+    guid: 'g',
+    indexerId: 'i',
+    indexerName: 'Indexer',
+    downloadUrl: null,
+    sizeBytes: null,
+    seeders: null,
+    leechers: null,
+    publishedAt: null,
+    resolution: null,
+    codec: null,
+    source: null,
+    parsedTitle: 'R',
+    year: null,
+    season: null,
+    episode: null,
+    fullSeason: false,
+    detailsUrl: null,
+    ...over,
+  };
+}
+
+describe('filterManualReleases', () => {
+  const list = [
+    manualRelease({ guid: 'a', indexerId: 'yts' }),
+    manualRelease({ guid: 'b', indexerId: 'tpb' }),
+  ];
+
+  it('narrows to one indexer when an id is given', () => {
+    expect(filterManualReleases(list, 'yts').map((r) => r.guid)).toEqual(['a']);
+  });
+
+  it('returns everything when the id is null', () => {
+    expect(filterManualReleases(list, null)).toHaveLength(2);
+    expect(filterManualReleases(list)).toHaveLength(2);
+  });
+});
+
+describe('sortManualReleases', () => {
+  const list = [
+    manualRelease({
+      guid: 'small',
+      sizeBytes: 100,
+      seeders: 1,
+      publishedAt: '2024-01-01T00:00:00Z',
+    }),
+    manualRelease({
+      guid: 'big',
+      sizeBytes: 900,
+      seeders: 50,
+      publishedAt: '2026-01-01T00:00:00Z',
+    }),
+  ];
+
+  it('ranks by seeders descending', () => {
+    expect(sortManualReleases(list, 'seeders').map((r) => r.guid)).toEqual(['big', 'small']);
+  });
+
+  it('ranks by size descending', () => {
+    expect(sortManualReleases(list, 'size').map((r) => r.guid)).toEqual(['big', 'small']);
+  });
+
+  it('ranks by date descending', () => {
+    expect(sortManualReleases(list, 'date').map((r) => r.guid)).toEqual(['big', 'small']);
   });
 });
