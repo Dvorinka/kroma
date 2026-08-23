@@ -128,11 +128,11 @@ export function TvPlayer() {
     return () => el.classList.remove('kroma-native-surface');
   }, [pb.surface, pb.ready]);
 
-  // Cursor hide: hide the OS cursor when the film is playing and no pointer
-  // has moved for 3s. Any platform with a pointer (web, desktop, Tizen/webOS
-  // with a magic remote) gets this; a pure TV without a pointer is inert.
+  // Desktop cursor hide: hide the OS cursor when the film is playing and no
+  // pointer has moved for 3s. A TV has no cursor (flags.pointer false), so
+  // this is inert there.
   useEffect(() => {
-    if (!mousePointer) return;
+    if (!isDesktop || !mousePointer) return;
     const w = webWindow();
     if (!w) return;
     const doc = w.document;
@@ -152,7 +152,7 @@ export function TvPlayer() {
       if (timer) clearTimeout(timer);
       doc.body.style.cursor = '';
     };
-  }, [mousePointer, pb.playing]);
+  }, [isDesktop, mousePointer, pb.playing]);
 
   const warn = playerWarn(pb, item, t);
 

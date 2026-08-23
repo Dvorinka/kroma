@@ -58,12 +58,6 @@ export class MpvEngine extends BaseTvEngine {
   private pendingSeek: number | null = null;
   private openSeq = 0;
   private readonly unlisten: Array<() => void> = [];
-  // Direct-mode white-screen watchdog: mpv plays audio without error when the
-  // bundled libmpv lacks a video decoder, so `end-file` never fires. The
-  // `vo-configured` property flips to true on the first rendered frame; if it
-  // hasn't within 3s of `file-loaded`, the file's video is undecodable and the
-  // engine falls back to the server remux (which now carries `videoCodecs`).
-  private voWatchdog: ReturnType<typeof setTimeout> | null = null;
 
   constructor(opts: EngineOptions) {
     super(opts);
@@ -160,10 +154,6 @@ export class MpvEngine extends BaseTvEngine {
         this.onTrackList(p.data);
         break;
       }
-      case 'vo-configured': {
-        if (p.data === true) this.clearVoWatchdog();
-        break;
-      }
     }
   }
 
@@ -195,7 +185,6 @@ export class MpvEngine extends BaseTvEngine {
         this.cmd('seek', target, 'absolute');
       }
       this.selectAudio(this.rendition);
-      this.armVoWatchdog();
     } else {
       this.elSec = 0;
     }
@@ -207,21 +196,6 @@ export class MpvEngine extends BaseTvEngine {
     if (this.resumeOnLoad) {
       this.resumeOnLoad = false;
       this.play();
-    }
-  }
-
-  private armVoWatchdog(): void {
-    this.clearVoWatchdog();
-    this.voWatchdog = setTimeout(() => {
-      this.voWatchdog = null;
-      if (!this.destroyed && this.mode === 'direct') this.fail();
-    }, 3000);
-  }
-
-  private clearVoWatchdog(): void {
-    if (this.voWatchdog) {
-      clearTimeout(this.voWatchdog);
-      this.voWatchdog = null;
     }
   }
 
@@ -252,7 +226,6 @@ export class MpvEngine extends BaseTvEngine {
 
   protected reanchor(absSec: number): void {
     this.resumeOnLoad = !this.paused;
-    this.clearVoWatchdog();
     if (this.mode === 'direct') {
       this.baseSec = 0;
       this.elSec = absSec;
@@ -324,9 +297,9 @@ export class MpvEngine extends BaseTvEngine {
     this.setProp('af', this.filter === 'off' ? '' : MPV_AF[this.filter]);
   }
 
-  // mpv's volume is 0–100 with soft-clip to 130; the controller's is 0–1.5.
+  // mpv's volume is 0–100 (soft-clip to 130); the controller's is 0–1.
   setVolume(volume: number): void {
-    this.setProp('volume', Math.round(Math.max(0, Math.min(1.5, volume)) * 100));
+    this.setProp('volume', Math.round(Math.max(0, Math.min(1, volume)) * 100));
   }
 
   // The mpv window fills the screen behind the page, so a fraction-rect maps
@@ -343,7 +316,6 @@ export class MpvEngine extends BaseTvEngine {
 
   destroy(): void {
     this.destroyed = true;
-    this.clearVoWatchdog();
     for (const un of this.unlisten) un();
     this.unlisten.length = 0;
     // Keep the mpv process alive for the next item; just stop the current file so
