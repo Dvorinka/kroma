@@ -295,6 +295,8 @@ mod tests {
             max_size_bytes_episode: 5 * 1_073_741_824,
             required_keywords: Vec::new(),
             forbidden_keywords: Vec::new(),
+            required_resolution: None,
+            required_codec: None,
         }
     }
 
