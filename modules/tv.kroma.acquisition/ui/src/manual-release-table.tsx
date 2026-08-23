@@ -9,8 +9,15 @@
 import { Table, useT } from '@kroma/module-sdk';
 import { Box, EmptyState, Row, SegmentGroup, Text } from '@kroma/ui/kit';
 import { useMemo, useState } from 'react';
+import { QualityFilterBar } from './quality-filter-bar';
 import { ReleaseFacts } from './release-cells';
-import { filterManualReleases, type ManualSort, sortManualReleases } from './release-sort';
+import {
+  EMPTY_QUALITY_FILTER,
+  filterManualReleases,
+  type ManualSort,
+  type QualityFilter,
+  sortManualReleases,
+} from './release-sort';
 import type { ManualReleaseView } from './schemas';
 
 const COLUMNS = 'minmax(0,1fr) 150px 92px 84px 44px';
@@ -35,9 +42,10 @@ export function ManualReleaseTable({
 }>) {
   const t = useT();
   const [sort, setSort] = useState<ManualSort>('seeders');
+  const [quality, setQuality] = useState<QualityFilter>(EMPTY_QUALITY_FILTER);
   const rows = useMemo(
-    () => sortManualReleases(filterManualReleases(releases, indexerFilter), sort),
-    [releases, sort, indexerFilter],
+    () => sortManualReleases(filterManualReleases(releases, indexerFilter, quality), sort),
+    [releases, sort, indexerFilter, quality],
   );
 
   if (releases.length === 0) {
@@ -65,6 +73,7 @@ export function ManualReleaseTable({
           ))}
         </SegmentGroup.Root>
       </Row>
+      <QualityFilterBar filter={quality} onChange={setQuality} />
       {rows.length === 0 ? (
         <Box py={20}>
           <EmptyState.Root icon="search">

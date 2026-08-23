@@ -8,9 +8,12 @@ import { TABULAR, Table, useT } from '@kroma/module-sdk';
 import { Box, Chip, Divider, EmptyState, Icon, Row, SegmentGroup, Text } from '@kroma/ui/kit';
 import { useMemo, useState } from 'react';
 import { IndexerReportStrip } from './indexer-report';
+import { QualityFilterBar } from './quality-filter-bar';
 import { ReleaseFacts } from './release-cells';
 import {
+  EMPTY_QUALITY_FILTER,
   filterReleases,
+  type QualityFilter,
   type ReleaseFilter,
   type ReleaseSort,
   sortReleases,
@@ -46,12 +49,13 @@ export function ReleaseTable({
   const [sort, setSort] = useState<ReleaseSort>('score');
   const [filter, setFilter] = useState<ReleaseFilter>('accepted');
   const [indexerFilter, setIndexerFilter] = useState<string | null>(null);
+  const [quality, setQuality] = useState<QualityFilter>(EMPTY_QUALITY_FILTER);
 
   const acceptedCount = releases.filter((r) => r.score != null).length;
   const rejectedCount = releases.length - acceptedCount;
   const rows = useMemo(
-    () => sortReleases(filterReleases(releases, filter, indexerFilter), sort),
-    [releases, filter, sort, indexerFilter],
+    () => sortReleases(filterReleases(releases, filter, indexerFilter, quality), sort),
+    [releases, filter, sort, indexerFilter, quality],
   );
 
   const toggleIndexer = (id: string | null) => {
@@ -97,6 +101,8 @@ export function ReleaseTable({
           ))}
         </SegmentGroup.Root>
       </Row>
+
+      <QualityFilterBar filter={quality} onChange={setQuality} />
 
       {rows.length === 0 ? (
         <Box py={20}>

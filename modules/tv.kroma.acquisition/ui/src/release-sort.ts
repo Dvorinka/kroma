@@ -8,10 +8,29 @@ import type { ManualReleaseView } from './schemas';
 export type ReleaseSort = 'score' | 'size' | 'seeders' | 'date';
 export type ReleaseFilter = 'accepted' | 'rejected' | 'all';
 
+export interface QualityFilter {
+  resolutions: string[];
+  codecs: string[];
+  sources: string[];
+  hdrOnly: boolean;
+  minSeeders: number | null;
+  maxSizeGb: number | null;
+}
+
+export const EMPTY_QUALITY_FILTER: QualityFilter = {
+  resolutions: [],
+  codecs: [],
+  sources: [],
+  hdrOnly: false,
+  minSeeders: null,
+  maxSizeGb: null,
+};
+
 export function filterReleases(
   releases: readonly ScoredReleaseView[],
   filter: ReleaseFilter,
   indexerId?: string | null,
+  quality?: QualityFilter,
 ): ScoredReleaseView[] {
   let out = releases;
   if (filter !== 'all') {
@@ -21,7 +40,22 @@ export function filterReleases(
   if (indexerId) {
     out = out.filter((r) => r.indexerId === indexerId);
   }
+  if (quality) {
+    out = out.filter((r) => matchesQuality(r, quality));
+  }
   return [...out];
+}
+
+function matchesQuality(r: ScoredReleaseView, q: QualityFilter): boolean {
+  if (q.resolutions.length > 0 && !q.resolutions.includes(r.resolution ?? '')) return false;
+  if (q.codecs.length > 0 && !q.codecs.includes(r.codec ?? '')) return false;
+  if (q.sources.length > 0 && !q.sources.includes(r.source ?? '')) return false;
+  if (q.hdrOnly && !r.hdr) return false;
+  if (q.minSeeders != null && (r.seeders ?? 0) < q.minSeeders) return false;
+  if (q.maxSizeGb != null && r.sizeBytes != null && r.sizeBytes > q.maxSizeGb * 1_000_000_000) {
+    return false;
+  }
+  return true;
 }
 
 // A rejected release has no score, so it sorts last whatever the column: it is
@@ -65,9 +99,27 @@ export type ManualSort = 'seeders' | 'size' | 'date';
 export function filterManualReleases(
   releases: readonly ManualReleaseView[],
   indexerId?: string | null,
+  quality?: QualityFilter,
 ): ManualReleaseView[] {
-  if (!indexerId) return [...releases];
-  return releases.filter((r) => r.indexerId === indexerId);
+  let out = releases;
+  if (indexerId) {
+    out = out.filter((r) => r.indexerId === indexerId);
+  }
+  if (quality) {
+    out = out.filter((r) => matchesManualQuality(r, quality));
+  }
+  return [...out];
+}
+
+function matchesManualQuality(r: ManualReleaseView, q: QualityFilter): boolean {
+  if (q.resolutions.length > 0 && !q.resolutions.includes(r.resolution ?? '')) return false;
+  if (q.codecs.length > 0 && !q.codecs.includes(r.codec ?? '')) return false;
+  if (q.sources.length > 0 && !q.sources.includes(r.source ?? '')) return false;
+  if (q.minSeeders != null && (r.seeders ?? 0) < q.minSeeders) return false;
+  if (q.maxSizeGb != null && r.sizeBytes != null && r.sizeBytes > q.maxSizeGb * 1_000_000_000) {
+    return false;
+  }
+  return true;
 }
 
 export function sortManualReleases(

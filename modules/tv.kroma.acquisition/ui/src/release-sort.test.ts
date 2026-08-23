@@ -1,6 +1,7 @@
 import type { ScoredReleaseView } from '@kroma/core';
 import { describe, expect, it } from 'vitest';
 import {
+  EMPTY_QUALITY_FILTER,
   filterManualReleases,
   filterReleases,
   sortManualReleases,
@@ -28,6 +29,10 @@ function release(over: Partial<ScoredReleaseView>): ScoredReleaseView {
     grabbable: true,
     upgrade: false,
     detailsUrl: null,
+    resolution: null,
+    codec: null,
+    source: null,
+    hdr: false,
     ...over,
   };
 }
@@ -174,5 +179,111 @@ describe('sortManualReleases', () => {
 
   it('ranks by date descending', () => {
     expect(sortManualReleases(list, 'date').map((r) => r.guid)).toEqual(['big', 'small']);
+  });
+});
+
+describe('filterReleases with quality', () => {
+  const list = [
+    release({
+      guid: '1080-hevc',
+      resolution: 'R1080',
+      codec: 'Hevc',
+      source: 'WebDl',
+      seeders: 50,
+      sizeBytes: 2_000_000_000,
+    }),
+    release({
+      guid: '4k-h264',
+      resolution: 'R2160',
+      codec: 'H264',
+      source: 'BluRay',
+      seeders: 10,
+      sizeBytes: 50_000_000_000,
+    }),
+    release({
+      guid: '720-hdr',
+      resolution: 'R720',
+      codec: 'Hevc',
+      source: 'Hdtv',
+      hdr: true,
+      seeders: 5,
+      sizeBytes: 1_000_000_000,
+    }),
+  ];
+
+  it('filters by resolution', () => {
+    const q = { ...EMPTY_QUALITY_FILTER, resolutions: ['R1080'] };
+    expect(filterReleases(list, 'all', null, q).map((r) => r.guid)).toEqual(['1080-hevc']);
+  });
+
+  it('filters by codec', () => {
+    const q = { ...EMPTY_QUALITY_FILTER, codecs: ['Hevc'] };
+    expect(filterReleases(list, 'all', null, q).map((r) => r.guid)).toEqual([
+      '1080-hevc',
+      '720-hdr',
+    ]);
+  });
+
+  it('filters by source', () => {
+    const q = { ...EMPTY_QUALITY_FILTER, sources: ['BluRay'] };
+    expect(filterReleases(list, 'all', null, q).map((r) => r.guid)).toEqual(['4k-h264']);
+  });
+
+  it('filters by HDR only', () => {
+    const q = { ...EMPTY_QUALITY_FILTER, hdrOnly: true };
+    expect(filterReleases(list, 'all', null, q).map((r) => r.guid)).toEqual(['720-hdr']);
+  });
+
+  it('filters by min seeders', () => {
+    const q = { ...EMPTY_QUALITY_FILTER, minSeeders: 20 };
+    expect(filterReleases(list, 'all', null, q).map((r) => r.guid)).toEqual(['1080-hevc']);
+  });
+
+  it('filters by max size', () => {
+    const q = { ...EMPTY_QUALITY_FILTER, maxSizeGb: 5 };
+    expect(filterReleases(list, 'all', null, q).map((r) => r.guid)).toEqual([
+      '1080-hevc',
+      '720-hdr',
+    ]);
+  });
+
+  it('combines multiple filters', () => {
+    const q = { ...EMPTY_QUALITY_FILTER, resolutions: ['R1080', 'R2160'], codecs: ['Hevc'] };
+    expect(filterReleases(list, 'all', null, q).map((r) => r.guid)).toEqual(['1080-hevc']);
+  });
+
+  it('empty quality filter returns everything', () => {
+    expect(filterReleases(list, 'all', null, EMPTY_QUALITY_FILTER)).toHaveLength(3);
+  });
+});
+
+describe('filterManualReleases with quality', () => {
+  const list = [
+    manualRelease({
+      guid: '1080',
+      resolution: 'R1080',
+      codec: 'Hevc',
+      source: 'WebDl',
+      seeders: 50,
+      sizeBytes: 2_000_000_000,
+    }),
+    manualRelease({
+      guid: '4k',
+      resolution: 'R2160',
+      codec: 'H264',
+      source: 'BluRay',
+      seeders: 10,
+      sizeBytes: 50_000_000_000,
+    }),
+  ];
+
+  it('filters by resolution', () => {
+    const q = { ...EMPTY_QUALITY_FILTER, resolutions: ['R2160'] };
+    expect(filterManualReleases(list, null, q).map((r) => r.guid)).toEqual(['4k']);
+  });
+
+  it('filters by min seeders', () => {
+    const q = { ...EMPTY_QUALITY_FILTER, minSeeders: 20 };
+    expect(filterManualReleases(list, null, q).map((r) => r.guid)).toEqual(['1080']);
   });
 });
