@@ -324,9 +324,9 @@ export class MpvEngine extends BaseTvEngine {
     this.setProp('af', this.filter === 'off' ? '' : MPV_AF[this.filter]);
   }
 
-  // mpv's volume is 0–100 (soft-clip to 130); the controller's is 0–1.
+  // mpv's volume is 0–100 with soft-clip to 130; the controller's is 0–1.5.
   setVolume(volume: number): void {
-    this.setProp('volume', Math.round(Math.max(0, Math.min(1, volume)) * 100));
+    this.setProp('volume', Math.round(Math.max(0, Math.min(1.5, volume)) * 100));
   }
 
   // The mpv window fills the screen behind the page, so a fraction-rect maps

@@ -104,13 +104,13 @@ export function useTvController(
     pb.engineRef.current?.setRate?.(rate);
   }, [pb.engineRef, rate, pb.surfaceNonce]);
 
-  // Desktop volume: wired to the mpv engine's `setVolume` (0–1 → 0–100).
+  // Desktop volume: wired to the mpv engine's `setVolume` (0–1.5 → 0–150).
   // On a TV the flag is off and these stay inert at their defaults.
   const [volume, setVolumeState] = useState(1);
   const [muted, setMuted] = useState(false);
   const setVolume = useCallback(
     (v: number) => {
-      const clamped = Math.max(0, Math.min(1, v));
+      const clamped = Math.max(0, Math.min(1.5, v));
       setVolumeState(clamped);
       if (desktop) pb.engineRef.current?.setVolume?.(muted ? 0 : clamped);
     },

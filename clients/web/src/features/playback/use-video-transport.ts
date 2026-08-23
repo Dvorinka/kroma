@@ -1,5 +1,6 @@
 import type { EngineDecision } from '@kroma/core';
 import { useCallback, useRef, useState } from 'react';
+import { setVolumeBoost } from '#ui/components/organisms/player/lib/audio-filter';
 import type { VideoPlayback } from '#web/features/playback/video-engine';
 
 export interface VideoTransportOptions {
@@ -154,8 +155,8 @@ export function useVideoTransport(opts: VideoTransportOptions): VideoTransport {
     (val: number) => {
       const v = videoRef.current;
       if (!v) return;
-      v.volume = Math.max(0, Math.min(1, val));
-      v.muted = v.volume === 0;
+      setVolumeBoost(v, val);
+      v.muted = val === 0;
     },
     [videoRef],
   );
