@@ -5,7 +5,7 @@
 
 import { LOCALES } from '@kroma/core';
 import { useLocale, useSetLocale, useT } from '@kroma/ui';
-import { Box, Divider, IconWell, ListRow, PageHeader, Select, Surface, Text } from '@kroma/ui/kit';
+import { Box, IconWell, ListRow, PageHeader, Select, Surface } from '@kroma/ui/kit';
 import { SettingsPage } from '#web/features/admin/settings';
 
 export function GeneralSettingsPage() {
@@ -22,13 +22,6 @@ export function GeneralSettingsPage() {
 
       <Box gap={22}>
         <Surface pad="none" overflow="hidden">
-          <Box px={22} py={17} gap={3}>
-            <Text variant="title">{t('account.uiLanguage')}</Text>
-            <Text variant="meta" color="textDim">
-              {t('account.uiLanguageDesc')}
-            </Text>
-          </Box>
-          <Divider spacing={0} />
           <ListRow.Group size="md">
             <ListRow.Root size="md">
               <ListRow.Leading>
