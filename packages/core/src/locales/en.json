@@ -2055,6 +2055,7 @@
   "requests.ledgerMissing": "Missing",
   "requests.ledgerNothingMissing": "Nothing missing in this season.",
   "requests.missingCount": "{count} missing",
+  "requests.missingCount_one": "{count} missing",
   "requests.missingEmpty": "Nothing missing",
   "requests.missingEmptyHint": "Everything released from your requests is here or on the way.",
   "requests.missingMovie": "Movie missing",
