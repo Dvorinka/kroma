@@ -24,6 +24,7 @@ import { useState } from 'react';
 import { useAcquisitionApi } from './api';
 import { defaultTarget, needsEpisode, needsSeason, queryPreview } from './free-search-target';
 import { IndexerReportStrip } from './indexer-report';
+import { MagnetPasteFallback } from './magnet-paste-fallback';
 import { ManualReleaseTable } from './manual-release-table';
 import type { ManualReleaseView } from './schemas';
 import { useFreeSearch } from './use-free-search';
@@ -174,6 +175,14 @@ export function RequestFreeSearch({
             grabbing={search.grabbing}
             onGrab={grab}
           />
+          {search.view.releases.length === 0 ? (
+            <MagnetPasteFallback
+              kind={kind}
+              title={search.query}
+              season={search.target === 'movie' ? null : Number(search.season) || null}
+              episode={search.target === 'episode' ? Number(search.episode) || null : null}
+            />
+          ) : null}
         </Box>
       ) : null}
     </Box>
