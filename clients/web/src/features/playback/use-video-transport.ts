@@ -12,6 +12,7 @@ export interface VideoTransportOptions {
   knownDurationMs: number;
   dur: number;
   setAnchor: (sec: number) => void;
+  setVolume: (v: number) => void;
 }
 
 export type VideoTransport = Pick<
@@ -39,8 +40,17 @@ export type VideoTransport = Pick<
  * state that only those actions read. Positions crossing this boundary are
  * absolute; the anchored HLS clock is converted against `baseSec`. */
 export function useVideoTransport(opts: VideoTransportOptions): VideoTransport {
-  const { videoRef, containerRef, barRef, decisionKind, baseSec, knownDurationMs, dur, setAnchor } =
-    opts;
+  const {
+    videoRef,
+    containerRef,
+    barRef,
+    decisionKind,
+    baseSec,
+    knownDurationMs,
+    dur,
+    setAnchor,
+    setVolume,
+  } = opts;
 
   const [hover, setHover] = useState<{ x: number; t: number; w: number } | null>(null);
   const [scrubbing, setScrubbing] = useState(false);
@@ -157,8 +167,9 @@ export function useVideoTransport(opts: VideoTransportOptions): VideoTransport {
       if (!v) return;
       setVolumeBoost(v, val);
       v.muted = val === 0;
+      setVolume(val);
     },
-    [videoRef],
+    [videoRef, setVolume],
   );
 
   const toggleMute = useCallback(() => {
