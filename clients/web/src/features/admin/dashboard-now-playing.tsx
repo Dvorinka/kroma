@@ -19,7 +19,7 @@ import {
 import { useState } from 'react';
 import { createCallable } from 'react-call';
 import { PillDot } from '#web/features/admin/pill';
-import { formatMbps, posterGradient, timecode } from '#web/shared/lib/adminFormat';
+import { posterGradient, timecode, useFormat } from '#web/shared/lib/adminFormat';
 import { apiBase, kromaClient } from '#web/shared/lib/api';
 import { useAuth } from '#web/shared/lib/auth';
 import { useStoryboard } from '#web/shared/lib/use-storyboard';
@@ -76,6 +76,7 @@ export function NowPlayingCard({
 }: Readonly<{ s: PlaybackSession; avatarUrl?: string | null; onStop: () => void }>) {
   const t = useT();
   const playing = s.state === 'playing';
+  const fmt = useFormat();
   const pct = s.durationMs ? (s.positionMs / s.durationMs) * 100 : 0;
   const buffering = s.state === 'buffering';
   // `transcode` = the audio was re-encoded to AAC; `remux` = HLS repackage with
@@ -190,7 +191,7 @@ export function NowPlayingCard({
           <DataField.Root size="sm">
             <DataField.Label>{t('admin.statBitrate')}</DataField.Label>
             <Text variant="meta" color="textMuted" style={TABULAR}>
-              {formatMbps(s.bitrate)} Mb/s
+              {fmt.mbps(s.bitrate)} Mb/s
             </Text>
           </DataField.Root>
           <DataField.Root size="sm">

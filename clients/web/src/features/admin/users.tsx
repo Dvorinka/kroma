@@ -16,7 +16,7 @@ import {
 import { Pill, PillDot } from '#web/features/admin/pill';
 import { Denied, PageHeader, useCap, usePoll } from '#web/features/admin/shell';
 import { EditUserModal, InviteModal, PendingInvite } from '#web/features/admin/users-modals';
-import { relativeSeen } from '#web/shared/lib/adminFormat';
+import { useFormat } from '#web/shared/lib/adminFormat';
 import { apiBase } from '#web/shared/lib/api';
 import { useAuth } from '#web/shared/lib/auth';
 
@@ -36,6 +36,7 @@ export function UsersScreen() {
 
 function UsersPageInner() {
   const t = useT();
+  const fmt = useFormat();
   const { client } = useAuth();
   const { data, reload } = usePoll(['admin', 'users'], () => client.adminUsers(), 8000);
   const { data: invitesData, reload: reloadInvites } = usePoll(
@@ -136,7 +137,7 @@ function UsersPageInner() {
                 <Table.Cell wide row gap={8}>
                   <PillDot tone={u.online ? 'success' : 'text/30'} size={7} />
                   <Text variant="meta" color="textDim">
-                    {u.online ? t('admin.online') : relativeSeen(u.lastSeen)}
+                    {u.online ? t('admin.online') : fmt.seen(u.lastSeen)}
                   </Text>
                 </Table.Cell>
                 <Table.Cell row justify="flex-end">

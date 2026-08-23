@@ -7,7 +7,7 @@ import { useT } from '@kroma/ui';
 import { Section, Text } from '@kroma/ui/kit';
 import { CHART_SERIES } from '#web/features/admin/chart-palette';
 import { MetricsChart } from '#web/features/admin/charts';
-import { decimal, formatMbps } from '#web/shared/lib/adminFormat';
+import { decimal, useFormat } from '#web/shared/lib/adminFormat';
 
 type Metrics = Readonly<{ metrics: MetricsSnapshot | null }>;
 
@@ -30,6 +30,7 @@ function LiveLabel() {
 export function BandwidthSection({ metrics }: Metrics) {
   const t = useT();
   const local = metrics?.series.bwLocal ?? [];
+  const fmt = useFormat();
   const remote = metrics?.series.bwRemote ?? [];
   return (
     <Section.Root mt={28}>
@@ -43,7 +44,7 @@ export function BandwidthSection({ metrics }: Metrics) {
         max={Math.max(1, ...local, ...remote)}
         label={t('admin.bandwidth')}
         sampleSec={sampleSec(metrics)}
-        formatValue={formatMbps}
+        formatValue={fmt.mbps}
         series={[
           {
             id: 'remote',
@@ -60,8 +61,8 @@ export function BandwidthSection({ metrics }: Metrics) {
           },
         ]}
         footer={t('admin.bwAverages', {
-          remote: formatMbps(avg(remote)),
-          local: formatMbps(avg(local)),
+          remote: fmt.mbps(avg(remote)),
+          local: fmt.mbps(avg(local)),
         })}
       />
     </Section.Root>

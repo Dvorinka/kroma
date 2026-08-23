@@ -4,7 +4,7 @@
 // installed state, and a live `module.op.*` stream replaces the action with a
 // download/install progress bar.
 
-import { formatBytes, type StoreCatalog, type StoreModule } from '@kroma/core';
+import type { StoreCatalog, StoreModule } from '@kroma/core';
 import { useT } from '@kroma/ui';
 import {
   Badge,
@@ -23,6 +23,7 @@ import { useId } from 'react';
 import { matchesQuery } from '#web/features/admin/module-api';
 import { type OpModule, opPct, PHASE_KEY, runningPct } from '#web/features/admin/module-ops';
 import { ADMIN_PRESS, PRESSABLE } from '#web/features/admin/web-style';
+import { useFormat } from '#web/shared/lib/adminFormat';
 import { Image } from '#web/shared/ui';
 
 /** Compact live progress: the phase label above a thin bar. */
@@ -96,6 +97,7 @@ function StoreCard({
 }>) {
   const t = useT();
   const id = useId();
+  const fmt = useFormat();
   return (
     <Surface
       elevated
@@ -125,7 +127,7 @@ function StoreCard({
           </Text>
           {m.size ? (
             <Text variant="meta" color="textDim">
-              · {formatBytes(m.size)}
+              · {fmt.bytes(m.size)}
             </Text>
           ) : null}
           <Text variant="meta" color={m.source === 'Official' ? 'accentText' : 'textDim'}>

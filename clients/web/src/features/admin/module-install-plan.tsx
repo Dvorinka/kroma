@@ -2,12 +2,11 @@
 // groups (optional deps + point contributors) and the unanswerable-
 // requirement warnings. The dialog itself lives in module-install.tsx.
 
-import {
-  formatBytes,
-  type StoreMissingPoint,
-  type StoreOptionalModule,
-  type StorePlan,
-  type StorePlanModule,
+import type {
+  StoreMissingPoint,
+  StoreOptionalModule,
+  StorePlan,
+  StorePlanModule,
 } from '@kroma/core';
 import { useT } from '@kroma/ui';
 import {
@@ -22,6 +21,7 @@ import {
   Spinner,
   Text,
 } from '@kroma/ui/kit';
+import { useFormat } from '#web/shared/lib/adminFormat';
 
 /** The dialog title already says the install failed, so the server's
  * `install failed:` prefix is dropped and the detail (which module, which
@@ -39,6 +39,7 @@ export function ErrorBox({ text }: Readonly<{ text: string }>) {
 
 function PlanRow({ m }: Readonly<{ m: StorePlanModule }>) {
   const t = useT();
+  const fmt = useFormat();
   return (
     <ListRow.Root size="sm">
       <Row gap={8}>
@@ -51,7 +52,7 @@ function PlanRow({ m }: Readonly<{ m: StorePlanModule }>) {
       {m.size ? (
         <ListRow.Trailing>
           <Text variant="meta" color="textMuted">
-            {formatBytes(m.size)}
+            {fmt.bytes(m.size)}
           </Text>
         </ListRow.Trailing>
       ) : null}
@@ -71,6 +72,7 @@ function OptInGroup({
   onIncludeChange: (next: string[]) => void;
 }>) {
   const t = useT();
+  const fmt = useFormat();
   if (rows.length === 0) return null;
   const hint = (m: StoreOptionalModule) =>
     [
@@ -99,7 +101,7 @@ function OptInGroup({
               actions={
                 m.size ? (
                   <Text variant="meta" color="textMuted">
-                    {formatBytes(m.size)}
+                    {fmt.bytes(m.size)}
                   </Text>
                 ) : undefined
               }
@@ -153,6 +155,7 @@ export function PlanStage({
   onRun: () => void;
 }>) {
   const t = useT();
+  const fmt = useFormat();
   if (error) {
     return (
       <>
@@ -201,7 +204,7 @@ export function PlanStage({
       <Row between gap={12} mt={16}>
         <Text variant="meta" color="textDim">
           {plan.totalSize > 0
-            ? t('admin.modulesInstallTotal', { size: formatBytes(plan.totalSize) })
+            ? t('admin.modulesInstallTotal', { size: fmt.bytes(plan.totalSize) })
             : ''}
         </Text>
         <Row gap={10}>

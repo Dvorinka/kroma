@@ -15,7 +15,7 @@ import { useAdmin } from '#web/features/admin/shell-context';
 import { ADMIN_SIDEBAR, ADMIN_TOPBAR } from '#web/features/admin/web-style';
 import { useModuleNavAll } from '#web/modules/ModuleHostProvider';
 import { resolveModuleIcon } from '#web/modules/module-icons';
-import { formatUptime } from '#web/shared/lib/adminFormat';
+import { useFormat } from '#web/shared/lib/adminFormat';
 import { useAuth } from '#web/shared/lib/auth';
 import { useNavActions } from '#web/shared/ui/nav-actions';
 import { NavMenuButton } from '#web/shared/ui/nav-menu-button';
@@ -118,6 +118,7 @@ function AdminNav() {
 function ServerStatusCard() {
   const t = useT();
   const { serverInfo } = useAdmin();
+  const fmt = useFormat();
   return (
     <Box p={14} radius="lg" bg="surface1" border="border">
       <Row gap={10} mb={8}>
@@ -130,7 +131,7 @@ function ServerStatusCard() {
         {serverInfo ? `${serverInfo.hostname} · v${serverInfo.version}` : '…'}
       </Text>
       <Text variant="meta" color="textDim" mt={3}>
-        {serverInfo ? t('admin.uptime', { uptime: formatUptime(serverInfo.uptimeSec) }) : ''}
+        {serverInfo ? t('admin.uptime', { uptime: fmt.uptime(serverInfo.uptimeSec) }) : ''}
       </Text>
     </Box>
   );
