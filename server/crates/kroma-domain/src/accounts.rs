@@ -106,14 +106,17 @@ impl Permission {
 }
 
 /// Derive a display role label from a capability set. The backend is
-/// capability-based; this is purely for the admin UI's "Rôle" badge.
-pub fn role_label(perms: &[Permission]) -> &'static str {
-    if perms.contains(&Permission::UsersManage) && perms.contains(&Permission::SettingsManage) {
-        "Propriétaire"
-    } else if perms.contains(&Permission::Playback) {
-        "Membre"
+/// capability-based; this is purely for the admin UI's role badge.
+pub fn role_label(perms: &[Permission], locale: &str) -> &'static str {
+    let is_owner = perms.contains(&Permission::UsersManage) && perms.contains(&Permission::SettingsManage);
+    let is_member = perms.contains(&Permission::Playback);
+    let en = locale == "en";
+    if is_owner {
+        if en { "Owner" } else { "Propriétaire" }
+    } else if is_member {
+        if en { "Member" } else { "Membre" }
     } else {
-        "Restreint"
+        if en { "Restricted" } else { "Restreint" }
     }
 }
 
@@ -165,14 +168,17 @@ mod tests {
 
     #[test]
     fn the_role_badge_follows_the_capability_set() {
-        assert_eq!(role_label(&Permission::all()), "Propriétaire");
+        assert_eq!(role_label(&Permission::all(), "fr"), "Propriétaire");
         assert_eq!(
-            role_label(&[Permission::UsersManage, Permission::SettingsManage]),
+            role_label(&[Permission::UsersManage, Permission::SettingsManage], "fr"),
             "Propriétaire"
         );
-        assert_eq!(role_label(&[Permission::Playback, Permission::RequestsCreate]), "Membre");
-        assert_eq!(role_label(&[Permission::RequestsCreate]), "Restreint");
-        assert_eq!(role_label(&[]), "Restreint");
-        assert_eq!(role_label(&[Permission::UsersManage]), "Restreint");
+        assert_eq!(role_label(&[Permission::Playback, Permission::RequestsCreate], "fr"), "Membre");
+        assert_eq!(role_label(&[Permission::RequestsCreate], "fr"), "Restreint");
+        assert_eq!(role_label(&[], "fr"), "Restreint");
+        assert_eq!(role_label(&[Permission::UsersManage], "fr"), "Restreint");
+        assert_eq!(role_label(&Permission::all(), "en"), "Owner");
+        assert_eq!(role_label(&[Permission::Playback], "en"), "Member");
+        assert_eq!(role_label(&[], "en"), "Restricted");
     }
 }

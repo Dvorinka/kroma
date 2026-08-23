@@ -14,6 +14,7 @@ use crate::infra::events::ServerEvent;
 use crate::model::Permission;
 use crate::services::settings;
 use crate::state::SharedState;
+use kroma_engine::i18n::ReqLocale;
 use axum::routing::get;
 use axum::Router;
 
@@ -34,10 +35,12 @@ pub async fn get_settings(
     State(state): State<SharedState>,
     AuthUser(user): AuthUser,
     Query(q): Query<SettingsQuery>,
+    ReqLocale(req_locale): ReqLocale,
 ) -> Result<Response, Response> {
     super::require(&user, Permission::SettingsManage)?;
     let view = q.view.unwrap_or_else(|| "general".into());
-    let groups = settings::groups(&view, &state.settings, &state.config, super::user_locale(&user));
+    let locale = user.language.as_deref().and_then(kroma_engine::i18n::normalize).unwrap_or(req_locale);
+    let groups = settings::groups(&view, &state.settings, &state.config, locale);
     Ok(Json(crate::api::dto::SettingsView { view, groups }).into_response())
 }
 
