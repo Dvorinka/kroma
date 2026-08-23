@@ -11,7 +11,7 @@ import { usePlayerCredits } from './hooks/use-player-credits';
 import { usePlayerKeys } from './hooks/use-player-keys';
 import { usePlayerNav } from './hooks/use-player-nav';
 import { useSeekNudge } from './hooks/use-seek-nudge';
-import { clamp01, sliderToVolume, volumeToSlider } from './lib/fmt';
+import { VOLUME_MAX, volumeToSlider } from './lib/fmt';
 import { chromeMetrics, panelGeometry, scaler, TRANSPORT_HEIGHT } from './lib/metrics';
 import { type ControlId, controlOrder, type PanelHandle } from './lib/nav';
 import type { SubtitleAppearance } from './lib/subtitle-appearance';
@@ -179,8 +179,8 @@ function Root({
       seekNudge,
       onNext: () => onPlayNext?.(),
       hasNext: Boolean(onPlayNext),
-      // Step in perceptual slider space so a nudge feels even across the range.
-      volumeNudge: (d) => c.setVolume(sliderToVolume(clamp01(volumeToSlider(c.volume) + d * 0.05))),
+      // Step 5% in real volume, clamped to 0–VOLUME_MAX.
+      volumeNudge: (d) => c.setVolume(Math.max(0, Math.min(VOLUME_MAX, c.volume + d * 0.05))),
       toggleMute: c.toggleMute,
       togglePip: c.togglePip,
       toggleFullscreen: c.toggleFullscreen,
