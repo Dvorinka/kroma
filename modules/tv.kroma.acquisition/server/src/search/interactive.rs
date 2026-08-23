@@ -110,6 +110,10 @@ pub fn score_release(
             || release.details_url.is_some(),
         upgrade: false,
         details_url: release.details_url.clone(),
+        resolution: parsed.resolution.map(|r| format!("{:?}", r)),
+        codec: parsed.codec.map(|c| format!("{:?}", c)),
+        source: parsed.source.map(|s| format!("{:?}", s)),
+        hdr: parsed.hdr || parsed.dolby_vision,
     }
 }
 
