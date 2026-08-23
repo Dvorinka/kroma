@@ -70,6 +70,26 @@ function arrowVolumeShortcut(
   return true;
 }
 
+// Immersive mode: fullscreen + chrome hidden → ArrowLeft/Right seek ±10s, just
+// like the j/l letter shortcuts. The chrome stays hidden (poke only re-arms the
+// auto-hide timer). When the chrome is visible, arrows fall through to the nav
+// machine for D-pad navigation instead.
+const SEEK_STEP = 10;
+function arrowSeekShortcut(
+  e: KeyboardEvent,
+  nav: PlayerNav,
+  controller: PlayerController,
+  flags: PlayerFlags,
+): boolean {
+  if (!flags.fullscreen || !controller.fullscreen) return false;
+  if (nav.revealed || nav.overlay) return false;
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return false;
+  e.preventDefault();
+  nav.poke();
+  controller.skip(e.key === 'ArrowLeft' ? -SEEK_STEP : SEEK_STEP);
+  return true;
+}
+
 /** The single window keydown router. One stable listener always sees the latest
  * render, so re-renders never re-subscribe. */
 export function usePlayerKeys(params: Readonly<PlayerKeysParams>): void {
@@ -95,6 +115,9 @@ export function usePlayerKeys(params: Readonly<PlayerKeysParams>): void {
 
     if (letterShortcut(e, nav, controller, flags)) return;
 
+    // Immersive mode first: fullscreen + chrome hidden → arrows are media
+    // shortcuts (seek/volume), not D-pad navigation.
+    if (arrowSeekShortcut(e, nav, controller, flags)) return;
     if (arrowVolumeShortcut(e, nav, controller, flags)) return;
 
     const remote = resolveRemoteKey(e);
