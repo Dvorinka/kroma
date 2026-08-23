@@ -56,7 +56,7 @@ fn row_to_admin_user(r: &Row) -> rusqlite::Result<User> {
 /// All accounts for the admin "Membres & partage" table, oldest first (owner is
 /// account 0). `online` is left false here the handler fills it from the live
 /// playback registry.
-pub fn admin_users(pool: &Pool) -> Result<Vec<kroma_domain::AdminUser>> {
+pub fn admin_users(pool: &Pool, locale: &str) -> Result<Vec<kroma_domain::AdminUser>> {
     let conn = pool.get()?;
     let mut stmt = conn.prepare(
         "SELECT id,email,username,avatar_url,created_at,permissions,last_seen,(pin_hash IS NOT NULL),audio_language,subtitle_language \
@@ -71,7 +71,7 @@ pub fn admin_users(pool: &Pool) -> Result<Vec<kroma_domain::AdminUser>> {
     for row in rows {
         let (u, last_seen) = row?;
         out.push(kroma_domain::AdminUser {
-            role: kroma_domain::role_label(&u.permissions).to_string(),
+            role: kroma_domain::role_label(&u.permissions, locale).to_string(),
             id: u.id,
             email: u.email,
             username: u.username,
@@ -161,7 +161,7 @@ mod tests {
         let member =
             crate::create_user(&p, "m@b.c", "member", "h", &[Permission::Playback]).unwrap();
 
-        let admins = admin_users(&p).unwrap();
+        let admins = admin_users(&p, "fr").unwrap();
         assert_eq!(admins.len(), 2);
         let owner_row = admins.iter().find(|u| u.id == owner.id).unwrap();
         let member_row = admins.iter().find(|u| u.id == member.id).unwrap();
@@ -191,7 +191,7 @@ mod tests {
             "renamed"
         );
         touch_last_seen(&p, &member.id).unwrap();
-        let after = admin_users(&p).unwrap();
+        let after = admin_users(&p, "fr").unwrap();
         assert!(after
             .iter()
             .find(|u| u.id == member.id)
@@ -200,6 +200,6 @@ mod tests {
             .is_some());
 
         delete_user(&p, &member.id).unwrap();
-        assert_eq!(admin_users(&p).unwrap().len(), 1);
+        assert_eq!(admin_users(&p, "fr").unwrap().len(), 1);
     }
 }

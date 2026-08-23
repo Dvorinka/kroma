@@ -16,6 +16,7 @@ use crate::model::Permission;
 use crate::state::SharedState;
 use axum::routing::{get, patch};
 use axum::Router;
+use kroma_engine::i18n::ReqLocale;
 
 /// Admin user management. Paths are relative to the `/api/admin` nest.
 pub fn routes() -> Router<SharedState> {
@@ -28,10 +29,17 @@ pub fn routes() -> Router<SharedState> {
 pub async fn list_users(
     State(state): State<SharedState>,
     AuthUser(user): AuthUser,
+    ReqLocale(req_locale): ReqLocale,
 ) -> Result<Response, Response> {
     super::require(&user, Permission::UsersManage)?;
+    let locale = user
+        .language
+        .as_deref()
+        .and_then(kroma_engine::i18n::normalize)
+        .unwrap_or(req_locale)
+        .to_string();
     let (mut users, library_count) = query(&state.db, move |pool| {
-        Ok((db::admin_users(&pool)?, db::counts(&pool)?.0))
+        Ok((db::admin_users(&pool, &locale)?, db::counts(&pool)?.0))
     })
     .await?;
     for u in &mut users {
@@ -57,11 +65,18 @@ pub async fn update_user(
     State(state): State<SharedState>,
     AuthUser(user): AuthUser,
     AxPath(id): AxPath<String>,
+    ReqLocale(req_locale): ReqLocale,
     Json(body): Json<UpdateUserBody>,
 ) -> Result<Response, Response> {
     super::require(&user, Permission::UsersManage)?;
     let id2 = id.clone();
-    let all = query(&state.db, move |pool| db::admin_users(&pool)).await?;
+    let locale = user
+        .language
+        .as_deref()
+        .and_then(kroma_engine::i18n::normalize)
+        .unwrap_or(req_locale)
+        .to_string();
+    let all = query(&state.db, move |pool| db::admin_users(&pool, &locale)).await?;
     let Some(target) = all.iter().find(|u| u.id == id2) else {
         return Err(lerr(
             super::user_locale(&user),
