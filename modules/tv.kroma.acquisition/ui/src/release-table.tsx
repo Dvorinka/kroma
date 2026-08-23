@@ -45,17 +45,26 @@ export function ReleaseTable({
   const t = useT();
   const [sort, setSort] = useState<ReleaseSort>('score');
   const [filter, setFilter] = useState<ReleaseFilter>('accepted');
+  const [indexerFilter, setIndexerFilter] = useState<string | null>(null);
 
   const acceptedCount = releases.filter((r) => r.score != null).length;
   const rejectedCount = releases.length - acceptedCount;
   const rows = useMemo(
-    () => sortReleases(filterReleases(releases, filter), sort),
-    [releases, filter, sort],
+    () => sortReleases(filterReleases(releases, filter, indexerFilter), sort),
+    [releases, filter, sort, indexerFilter],
   );
+
+  const toggleIndexer = (id: string | null) => {
+    setIndexerFilter((prev) => (prev === id ? null : id));
+  };
 
   return (
     <Box gap={12}>
-      <IndexerReportStrip indexers={indexers} />
+      <IndexerReportStrip
+        indexers={indexers}
+        activeIndexer={indexerFilter}
+        onToggleIndexer={toggleIndexer}
+      />
 
       <Row wrap between gap={10}>
         <Row wrap gap={8}>
