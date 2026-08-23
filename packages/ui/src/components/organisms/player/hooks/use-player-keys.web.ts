@@ -52,7 +52,8 @@ function letterShortcut(
 
 // On the web (flags.volume = true), ArrowUp/Down adjust volume globally — no
 // need to focus the volume control first. Skipped when a panel is open so
-// D-pad navigation inside the panel still works.
+// D-pad navigation inside the panel still works. In immersive mode (fullscreen
+// + chrome hidden), rearmHide keeps the UI dark instead of flashing it.
 function arrowVolumeShortcut(
   e: KeyboardEvent,
   nav: PlayerNav,
@@ -62,7 +63,8 @@ function arrowVolumeShortcut(
   if (!flags.volume || nav.overlay) return false;
   if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return false;
   e.preventDefault();
-  nav.poke();
+  if (flags.fullscreen && controller.fullscreen && !nav.revealed) nav.rearmHide();
+  else nav.poke();
   const dir = e.key === 'ArrowUp' ? 1 : -1;
   // Step 5% in real volume (not slider space), clamped to 0–VOLUME_MAX.
   const next = Math.max(0, Math.min(VOLUME_MAX, controller.volume + dir * 0.05));
@@ -71,9 +73,9 @@ function arrowVolumeShortcut(
 }
 
 // Immersive mode: fullscreen + chrome hidden → ArrowLeft/Right seek ±10s, just
-// like the j/l letter shortcuts. The chrome stays hidden (poke only re-arms the
-// auto-hide timer). When the chrome is visible, arrows fall through to the nav
-// machine for D-pad navigation instead.
+// like the j/l letter shortcuts. The chrome stays hidden (rearmHide re-arms the
+// auto-hide timer without revealing). When the chrome is visible, arrows fall
+// through to the nav machine for D-pad navigation instead.
 const SEEK_STEP = 10;
 function arrowSeekShortcut(
   e: KeyboardEvent,
@@ -85,7 +87,7 @@ function arrowSeekShortcut(
   if (nav.revealed || nav.overlay) return false;
   if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return false;
   e.preventDefault();
-  nav.poke();
+  nav.rearmHide();
   controller.skip(e.key === 'ArrowLeft' ? -SEEK_STEP : SEEK_STEP);
   return true;
 }

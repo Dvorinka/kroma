@@ -59,6 +59,7 @@ function makeNav(): PlayerNav {
     focusedControl: null,
     handleKey: vi.fn(),
     poke: vi.fn(),
+    rearmHide: vi.fn(),
     openOverlay: vi.fn(),
     closeOverlay: vi.fn(),
     activate: vi.fn(),
@@ -210,7 +211,8 @@ describe('usePlayerKeys immersive seek (fullscreen + chrome hidden)', () => {
     const { params, press } = setup({ nav, controller });
     press({ key: 'ArrowLeft' });
     expect(params.controller.skip).toHaveBeenCalledWith(-10);
-    expect(params.nav.poke).toHaveBeenCalled();
+    expect(params.nav.rearmHide).toHaveBeenCalled();
+    expect(params.nav.poke).not.toHaveBeenCalled();
     expect(params.nav.handleKey).not.toHaveBeenCalled();
     press({ key: 'ArrowRight' });
     expect(params.controller.skip).toHaveBeenCalledWith(10);
@@ -240,7 +242,7 @@ describe('usePlayerKeys immersive seek (fullscreen + chrome hidden)', () => {
     expect(params.nav.handleKey).not.toHaveBeenCalled();
   });
 
-  it('ArrowUp/Down still adjust volume in immersive mode', () => {
+  it('ArrowUp/Down still adjust volume in immersive mode (rearmHide, not poke)', () => {
     const nav = makeNav();
     nav.revealed = false;
     const controller = makeController();
@@ -249,6 +251,8 @@ describe('usePlayerKeys immersive seek (fullscreen + chrome hidden)', () => {
     const { params, press } = setup({ nav, controller });
     press({ key: 'ArrowUp' });
     expect(params.controller.setVolume).toHaveBeenCalled();
+    expect(params.nav.rearmHide).toHaveBeenCalled();
+    expect(params.nav.poke).not.toHaveBeenCalled();
     expect(params.controller.skip).not.toHaveBeenCalled();
   });
 });
