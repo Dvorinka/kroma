@@ -1,8 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { SettingsPage } from '#web/features/admin/settings';
+import { GeneralSettingsPage } from '#web/features/admin/general-settings';
 
 export const Route = createFileRoute('/admin/general')({
-  component: () => (
-    <SettingsPage view="general" titleKey="admin.pageGeneral" subtitleKey="admin.pageGeneralSub" />
-  ),
+  component: GeneralSettingsPage,
 });

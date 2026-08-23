@@ -88,7 +88,7 @@ pub fn groups(
             ),
             group(
                 "admin.preferences",
-                None,
+                Some("admin.preferencesDesc"),
                 vec![
                     row("watchAutoScan", t("admin.watchAutoScan"), Some(t("admin.watchAutoScanHint")), "toggle", &[], g("watchAutoScan"), true),
                     row("showRecentHome", t("admin.showRecentHome"), None, "toggle", &[], g("showRecentHome"), true),
