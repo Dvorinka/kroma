@@ -108,6 +108,89 @@ export async function removeFromWatchLater(ctx: RequestContext, itemId: string):
   await ctx.json<void>(`/watch-later/${encodeURIComponent(itemId)}`, { method: 'DELETE' });
 }
 
+export interface CustomList {
+  id: string;
+  name: string;
+  icon: string | null;
+  sort_order: number;
+  created_at: string;
+}
+
+/** All custom lists for the current user, ordered by sort_order. */
+export function customLists(ctx: RequestContext): Promise<CustomList[]> {
+  return ctx.json<CustomList[]>('/custom-lists');
+}
+
+/** Create a new custom list with a name and optional icon. */
+export async function createCustomList(
+  ctx: RequestContext,
+  name: string,
+  icon?: string,
+): Promise<CustomList> {
+  return ctx.json<CustomList>('/custom-lists', {
+    method: 'POST',
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ name, icon: icon ?? null }),
+  });
+}
+
+/** Delete a custom list and all its entries. */
+export async function deleteCustomList(ctx: RequestContext, listId: string): Promise<void> {
+  await ctx.json<void>(`/custom-lists/${encodeURIComponent(listId)}`, { method: 'DELETE' });
+}
+
+/** Rename a custom list. */
+export async function renameCustomList(
+  ctx: RequestContext,
+  listId: string,
+  name: string,
+): Promise<void> {
+  await ctx.json<void>(`/custom-lists/${encodeURIComponent(listId)}`, {
+    method: 'PUT',
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ name }),
+  });
+}
+
+/** Item ids in a custom list (newest first). */
+export function customListEntries(ctx: RequestContext, listId: string): Promise<string[]> {
+  return ctx.json<string[]>(`/custom-lists/${encodeURIComponent(listId)}/entries`);
+}
+
+/** Add a title to a custom list. */
+export async function addToCustomList(
+  ctx: RequestContext,
+  listId: string,
+  itemId: string,
+): Promise<void> {
+  await ctx.json<void>(
+    `/custom-lists/${encodeURIComponent(listId)}/entries/${encodeURIComponent(itemId)}`,
+    { method: 'PUT' },
+  );
+}
+
+/** Remove a title from a custom list. */
+export async function removeFromCustomList(
+  ctx: RequestContext,
+  listId: string,
+  itemId: string,
+): Promise<void> {
+  await ctx.json<void>(
+    `/custom-lists/${encodeURIComponent(listId)}/entries/${encodeURIComponent(itemId)}`,
+    { method: 'DELETE' },
+  );
+}
+
+/** Which custom lists contain this item (for the popup). */
+export function listsForItem(
+  ctx: RequestContext,
+  itemId: string,
+): Promise<{ id: string; name: string }[]> {
+  return ctx.json<{ id: string; name: string }[]>(
+    `/custom-lists/item/${encodeURIComponent(itemId)}`,
+  );
+}
+
 /** Report playback state so the admin dashboard can show a live session. */
 export async function pingPlayback(ctx: RequestContext, ping: PlaybackPing): Promise<void> {
   await ctx.json<void>('/playback/ping', {

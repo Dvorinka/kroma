@@ -10,6 +10,7 @@ import { Intro } from '#web/features/catalog/intro';
 import { NotificationBell } from '#web/features/notifications/panel';
 import { ModuleHostProvider } from '#web/modules/ModuleHostProvider';
 import { AuthProvider } from '#web/shared/lib/auth';
+import { CustomListsProvider } from '#web/shared/lib/custom-lists';
 import { LocaleProvider } from '#web/shared/lib/locale';
 import { MyListProvider } from '#web/shared/lib/mylist';
 import { queryClient } from '#web/shared/lib/query';
@@ -81,13 +82,15 @@ function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
           <AuthProvider>
             <WatchedProvider>
               <MyListProvider>
-                <WatchLaterProvider>
-                  <LocaleProvider>
-                    <NavActionsProvider actions={<NotificationBell />}>
-                      <ModuleHostProvider>{children}</ModuleHostProvider>
-                    </NavActionsProvider>
-                  </LocaleProvider>
-                </WatchLaterProvider>
+                <CustomListsProvider>
+                  <WatchLaterProvider>
+                    <LocaleProvider>
+                      <NavActionsProvider actions={<NotificationBell />}>
+                        <ModuleHostProvider>{children}</ModuleHostProvider>
+                      </NavActionsProvider>
+                    </LocaleProvider>
+                  </WatchLaterProvider>
+                </CustomListsProvider>
               </MyListProvider>
             </WatchedProvider>
           </AuthProvider>

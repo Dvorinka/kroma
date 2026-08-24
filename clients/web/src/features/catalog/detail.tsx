@@ -14,6 +14,8 @@ import {
 } from '@kroma/ui/kit';
 import { type CSSProperties, type ReactNode, useEffect, useState } from 'react';
 import {
+  AddToListButton,
+  DeleteButton,
   DirectorsLine,
   HeroFields,
   ListButton,
@@ -101,6 +103,8 @@ export interface DetailHeroProps {
   themeUrl?: string | null;
   adminAction?: ReactNode;
   onReport?: () => void;
+  onDelete?: () => void;
+  onAddToList?: () => void;
 }
 
 /** Full-bleed cinematic detail hero shared by the movie and series fiches
@@ -133,6 +137,8 @@ export function DetailHero({
   themeUrl,
   adminAction,
   onReport,
+  onDelete,
+  onAddToList,
 }: Readonly<DetailHeroProps>) {
   const t = useT();
   const [c1, c2] = posterColors(art.id);
@@ -236,6 +242,8 @@ export function DetailHero({
               <ListButton inList={inList} onToggle={onToggleList} />
               <WatchLaterButton inQueue={inQueue} onToggle={onToggleQueue} />
               <ReportButton onReport={onReport} />
+              <DeleteButton onDelete={onDelete} />
+              <AddToListButton onAddToList={onAddToList} />
               {adminAction}
             </Box>
 

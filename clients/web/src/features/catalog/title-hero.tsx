@@ -28,6 +28,8 @@ export function TitleHero({
   onPlay,
   onRequest,
   onBack,
+  onDelete,
+  onAddToList,
 }: Readonly<{
   view: TitleView;
   owned: boolean;
@@ -43,6 +45,8 @@ export function TitleHero({
   onPlay: (id: string) => void;
   onRequest: () => void;
   onBack: () => void;
+  onDelete?: () => void;
+  onAddToList?: () => void;
 }>) {
   const t = useT();
   const playable = owned ? view.playable : null;
@@ -115,6 +119,8 @@ export function TitleHero({
               })
           : undefined
       }
+      onDelete={onDelete}
+      onAddToList={onAddToList}
     />
   );
 }

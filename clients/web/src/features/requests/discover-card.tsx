@@ -20,6 +20,7 @@ import {
 } from '@kroma/ui/kit';
 import { useNavigate } from '@tanstack/react-router';
 import { type CSSProperties, type ReactNode, useState } from 'react';
+import { CustomListDialog } from '#web/features/catalog/custom-list-dialog';
 import { useAuth } from '#web/shared/lib/auth';
 import { useMyList } from '#web/shared/lib/mylist';
 import { useWatchLater } from '#web/shared/lib/watch-later';
@@ -237,10 +238,21 @@ export function DiscoverCard({ entry, width }: Readonly<{ entry: DiscoverEntry; 
                   style={QUICK_ACTION_BTN}
                 >
                   <Icon
-                    name={inQueue(listId) ? 'bookmark-filled' : 'bookmark'}
+                    name={inQueue(listId) ? 'clock-filled' : 'clock'}
                     size={16}
                     color={inQueue(listId) ? 'accent' : 'white'}
                   />
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void CustomListDialog.call({ itemId: listId });
+                  }}
+                  aria-label={t('content.addToCustomList')}
+                  style={QUICK_ACTION_BTN}
+                >
+                  <Icon name="list" size={16} color="white" />
                 </button>
               </div>
             </Box>

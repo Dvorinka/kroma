@@ -7,12 +7,14 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import type { CSSProperties } from 'react';
 import { AiSuggestRail } from '#web/features/catalog/ai-suggest-rail';
+import { CustomListDialog } from '#web/features/catalog/custom-list-dialog';
 import { CastRail, type SimilarItem, SimilarRail } from '#web/features/catalog/detail';
 import { SeasonSection } from '#web/features/catalog/episode-list';
 import { TitleHero } from '#web/features/catalog/title-hero';
 import { TreatmentsPanel } from '#web/features/catalog/treatments-panel';
 import { useTitleRequest } from '#web/features/catalog/use-title-request';
 import { QualityPrefDialog } from '#web/features/requests/quality-pref-dialog';
+import { kromaClient } from '#web/shared/lib/api';
 import { useAuth } from '#web/shared/lib/auth';
 import { useMyList } from '#web/shared/lib/mylist';
 import { userQueries } from '#web/shared/lib/queries';
@@ -190,6 +192,28 @@ export function TitleDetail({ initial }: Readonly<{ initial: TitleView }>) {
   const overline = view.genres.length
     ? view.genres.slice(0, 3).join(' · ')
     : t(fallbackOverlineKey);
+
+  const handleDelete = async () => {
+    if (!localId) return;
+    const ok = window.confirm(t('content.deleteConfirm', { title: view.title }));
+    if (!ok) return;
+    try {
+      if (view.kind === 'show') {
+        await kromaClient().deleteShow(localId);
+      } else {
+        await kromaClient().deleteItem(localId);
+      }
+      navigate({ to: backTo });
+    } catch (e) {
+      console.error('delete failed', e);
+    }
+  };
+
+  const customListId = localId ?? (view.tmdbId != null ? `tmdb:${view.tmdbId}` : null);
+  const handleAddToList = () => {
+    if (customListId) void CustomListDialog.call({ itemId: customListId });
+  };
+
   const similarItems: SimilarItem[] = view.similar.map((s) => ({
     id: s.key,
     title: s.title,
@@ -215,6 +239,8 @@ export function TitleDetail({ initial }: Readonly<{ initial: TitleView }>) {
         onPlay={play}
         onRequest={onRequestClick}
         onBack={() => navigate({ to: backTo })}
+        onDelete={owned && localId ? handleDelete : undefined}
+        onAddToList={handleAddToList}
       />
 
       <TitleBody

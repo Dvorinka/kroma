@@ -146,4 +146,9 @@ pub(crate) const MIGRATIONS: &[&str] = &[
     // Watch later: user's "to watch" queue, separate from my_list bookmarks.
     "CREATE TABLE IF NOT EXISTS watch_later (user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, item_id TEXT NOT NULL, added_at TEXT NOT NULL, PRIMARY KEY (user_id, item_id))",
     "CREATE INDEX IF NOT EXISTS idx_watch_later_user ON watch_later(user_id, added_at DESC)",
+    // Custom named lists: user-created collections with optional icon and sort order.
+    "CREATE TABLE IF NOT EXISTS custom_lists (id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, name TEXT NOT NULL, icon TEXT, sort_order INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL)",
+    "CREATE INDEX IF NOT EXISTS idx_custom_lists_user ON custom_lists(user_id, sort_order)",
+    "CREATE TABLE IF NOT EXISTS custom_list_entries (list_id TEXT NOT NULL REFERENCES custom_lists(id) ON DELETE CASCADE, item_id TEXT NOT NULL, added_at TEXT NOT NULL, PRIMARY KEY (list_id, item_id))",
+    "CREATE INDEX IF NOT EXISTS idx_custom_list_entries_list ON custom_list_entries(list_id, added_at DESC)",
 ];

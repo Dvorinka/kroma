@@ -272,6 +272,12 @@ export class KromaClient {
   item(id: string): Promise<MediaItem> {
     return media.item(this.ctx, id);
   }
+  deleteItem(id: string): Promise<void> {
+    return media.deleteItem(this.ctx, id);
+  }
+  deleteShow(id: string): Promise<void> {
+    return media.deleteShow(this.ctx, id);
+  }
   similar(id: string): Promise<MediaItem[]> {
     return media.similar(this.ctx, id);
   }
@@ -576,6 +582,30 @@ export class KromaClient {
   }
   removeFromWatchLater(itemId: string): Promise<void> {
     return playback.removeFromWatchLater(this.ctx, itemId);
+  }
+  customLists(): Promise<playback.CustomList[]> {
+    return playback.customLists(this.ctx);
+  }
+  createCustomList(name: string, icon?: string): Promise<playback.CustomList> {
+    return playback.createCustomList(this.ctx, name, icon);
+  }
+  deleteCustomList(listId: string): Promise<void> {
+    return playback.deleteCustomList(this.ctx, listId);
+  }
+  renameCustomList(listId: string, name: string): Promise<void> {
+    return playback.renameCustomList(this.ctx, listId, name);
+  }
+  customListEntries(listId: string): Promise<string[]> {
+    return playback.customListEntries(this.ctx, listId);
+  }
+  addToCustomList(listId: string, itemId: string): Promise<void> {
+    return playback.addToCustomList(this.ctx, listId, itemId);
+  }
+  removeFromCustomList(listId: string, itemId: string): Promise<void> {
+    return playback.removeFromCustomList(this.ctx, listId, itemId);
+  }
+  listsForItem(itemId: string): Promise<{ id: string; name: string }[]> {
+    return playback.listsForItem(this.ctx, itemId);
   }
   pingPlayback(ping: PlaybackPing): Promise<void> {
     return playback.pingPlayback(this.ctx, ping);
@@ -916,3 +946,5 @@ export class KromaClient {
     return admin.testLlm(this.ctx, probe);
   }
 }
+
+export type { CustomList } from './client/playback';

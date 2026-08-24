@@ -63,6 +63,70 @@ pub fn get_item(pool: &Pool, id: &str) -> Result<Option<MediaItem>> {
     }
 }
 
+/// Collect abs_path values for an item (from items + files tables).
+fn item_file_paths(conn: &Connection, id: &str) -> Result<Vec<String>> {
+    let mut paths = Vec::new();
+    if let Some(abs) = conn.query_row::<String, _, _>(
+        "SELECT abs_path FROM items WHERE id = ?1",
+        params![id],
+        |r| r.get(0),
+    ).optional()? {
+        if !abs.is_empty() {
+            paths.push(abs);
+        }
+    }
+    let mut stmt = conn.prepare("SELECT abs_path FROM files WHERE item_id = ?1")?;
+    let rows = stmt.query_map(params![id], |r| r.get::<_, String>(0))?;
+    for r in rows {
+        let p = r?;
+        if !paths.contains(&p) {
+            paths.push(p);
+        }
+    }
+    Ok(paths)
+}
+
+/// Collect abs_path values for all episodes of a show.
+fn show_file_paths(conn: &Connection, show_id: &str) -> Result<Vec<String>> {
+    let mut paths = Vec::new();
+    let mut stmt = conn.prepare(
+        "SELECT abs_path FROM items WHERE show_id = ?1 AND abs_path IS NOT NULL AND abs_path != ''",
+    )?;
+    let rows = stmt.query_map(params![show_id], |r| r.get::<_, String>(0))?;
+    for r in rows {
+        paths.push(r?);
+    }
+    let mut stmt = conn.prepare(
+        "SELECT f.abs_path FROM files f JOIN items i ON f.item_id = i.id WHERE i.show_id = ?1",
+    )?;
+    let rows = stmt.query_map(params![show_id], |r| r.get::<_, String>(0))?;
+    for r in rows {
+        let p = r?;
+        if !paths.contains(&p) {
+            paths.push(p);
+        }
+    }
+    Ok(paths)
+}
+
+/// Delete a single item (movie/episode) from DB and return its file paths so
+/// the caller can remove them from disk. CASCADE removes files rows.
+pub fn delete_item_with_paths(pool: &Pool, id: &str) -> Result<Vec<String>> {
+    let conn = pool.get()?;
+    let paths = item_file_paths(&conn, id)?;
+    conn.execute("DELETE FROM items WHERE id = ?1", params![id])?;
+    Ok(paths)
+}
+
+/// Delete a show and all its episodes from DB, returning all file paths.
+/// CASCADE removes files rows and episode items via show_id FK.
+pub fn delete_show_with_paths(pool: &Pool, id: &str) -> Result<Vec<String>> {
+    let conn = pool.get()?;
+    let paths = show_file_paths(&conn, id)?;
+    conn.execute("DELETE FROM shows WHERE id = ?1", params![id])?;
+    Ok(paths)
+}
+
 /// Catalogue snapshot for the search index: no per-row file or
 /// representative-video lookups, so a full reindex is two table scans.
 pub fn index_snapshot(pool: &Pool) -> Result<(Vec<MediaItem>, Vec<Show>)> {

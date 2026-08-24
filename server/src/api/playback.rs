@@ -9,6 +9,7 @@ use axum::response::{IntoResponse, Response};
 use axum::Json;
 use serde::Deserialize;
 
+use crate::api::error::json_error;
 use crate::api::util::{client_ip, query};
 use crate::api::extract::AuthUser;
 use crate::db;
@@ -16,7 +17,7 @@ use crate::infra::events::ServerEvent;
 use crate::services::playback::{self, Ping};
 use crate::services::settings;
 use crate::state::SharedState;
-use axum::routing::{get, post, put};
+use axum::routing::{delete, get, post, put};
 use axum::Router;
 
 /// Playback progress / resume, watched markers, "Ma liste", up-next and the
@@ -38,6 +39,11 @@ pub fn routes() -> Router<SharedState> {
         .route("/my-list/{id}", put(add_to_list).delete(remove_from_list))
         .route("/watch-later", get(list_watch_later))
         .route("/watch-later/{id}", put(add_to_watch_later).delete(remove_from_watch_later))
+        .route("/custom-lists", get(list_custom_lists).post(create_custom_list))
+        .route("/custom-lists/{id}", delete(delete_custom_list).put(rename_custom_list))
+        .route("/custom-lists/{id}/entries", get(list_custom_list_entries))
+        .route("/custom-lists/{id}/entries/{itemId}", put(add_to_custom_list).delete(remove_from_custom_list))
+        .route("/custom-lists/item/{itemId}", get(lists_for_item))
         .route("/playback/ping", post(ping))
         .route("/playback/stop", post(stop))
 }
@@ -381,6 +387,126 @@ pub async fn list_watch_later(
 ) -> Response {
     match query(&state.db, move |pool| db::list_watch_later(&pool, &user.id)).await {
         Ok(ids) => Json(ids).into_response(),
+        Err(resp) => resp,
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CreateListBody {
+    pub name: String,
+    #[serde(default)]
+    pub icon: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct RenameListBody {
+    pub name: String,
+}
+
+/// `GET /api/custom-lists` (Bearer) → `CustomList[]`.
+pub async fn list_custom_lists(State(state): State<SharedState>, AuthUser(user): AuthUser) -> Response {
+    match query(&state.db, move |pool| db::list_custom_lists(&pool, &user.id)).await {
+        Ok(lists) => Json(lists).into_response(),
+        Err(resp) => resp,
+    }
+}
+
+/// `POST /api/custom-lists` (Bearer) → `CustomList`.
+pub async fn create_custom_list(
+    State(state): State<SharedState>,
+    AuthUser(user): AuthUser,
+    Json(body): Json<CreateListBody>,
+) -> Response {
+    let name = body.name.trim().to_string();
+    if name.is_empty() {
+        return json_error(StatusCode::BAD_REQUEST, "list name cannot be empty");
+    }
+    match query(&state.db, move |pool| {
+        db::create_list(&pool, &user.id, &name, body.icon.as_deref())
+    })
+    .await
+    {
+        Ok(list) => Json(list).into_response(),
+        Err(resp) => resp,
+    }
+}
+
+/// `DELETE /api/custom-lists/:id` (Bearer) → 204.
+pub async fn delete_custom_list(
+    State(state): State<SharedState>,
+    AuthUser(user): AuthUser,
+    Path(id): Path<String>,
+) -> Response {
+    match query(&state.db, move |pool| db::delete_list(&pool, &user.id, &id)).await {
+        Ok(()) => StatusCode::NO_CONTENT.into_response(),
+        Err(resp) => resp,
+    }
+}
+
+/// `PUT /api/custom-lists/:id` (Bearer) → 204. Renames the list.
+pub async fn rename_custom_list(
+    State(state): State<SharedState>,
+    AuthUser(user): AuthUser,
+    Path(id): Path<String>,
+    Json(body): Json<RenameListBody>,
+) -> Response {
+    let name = body.name.trim().to_string();
+    if name.is_empty() {
+        return json_error(StatusCode::BAD_REQUEST, "list name cannot be empty");
+    }
+    match query(&state.db, move |pool| db::rename_list(&pool, &user.id, &id, &name)).await {
+        Ok(()) => StatusCode::NO_CONTENT.into_response(),
+        Err(resp) => resp,
+    }
+}
+
+/// `GET /api/custom-lists/:id/entries` (Bearer) → `string[]`.
+pub async fn list_custom_list_entries(
+    State(state): State<SharedState>,
+    AuthUser(_user): AuthUser,
+    Path(id): Path<String>,
+) -> Response {
+    match query(&state.db, move |pool| db::list_custom_list_entries(&pool, &id)).await {
+        Ok(ids) => Json(ids).into_response(),
+        Err(resp) => resp,
+    }
+}
+
+/// `PUT /api/custom-lists/:id/entries/:itemId` (Bearer) → 204.
+pub async fn add_to_custom_list(
+    State(state): State<SharedState>,
+    AuthUser(_user): AuthUser,
+    Path((id, item_id)): Path<(String, String)>,
+) -> Response {
+    match query(&state.db, move |pool| db::add_to_custom_list(&pool, &id, &item_id)).await {
+        Ok(()) => StatusCode::NO_CONTENT.into_response(),
+        Err(resp) => resp,
+    }
+}
+
+/// `DELETE /api/custom-lists/:id/entries/:itemId` (Bearer) → 204.
+pub async fn remove_from_custom_list(
+    State(state): State<SharedState>,
+    AuthUser(_user): AuthUser,
+    Path((id, item_id)): Path<(String, String)>,
+) -> Response {
+    match query(&state.db, move |pool| db::remove_from_custom_list(&pool, &id, &item_id)).await {
+        Ok(()) => StatusCode::NO_CONTENT.into_response(),
+        Err(resp) => resp,
+    }
+}
+
+/// `GET /api/custom-lists/item/:itemId` (Bearer) → `[{id, name}]`.
+pub async fn lists_for_item(
+    State(state): State<SharedState>,
+    AuthUser(user): AuthUser,
+    Path(item_id): Path<String>,
+) -> Response {
+    match query(&state.db, move |pool| db::lists_containing_item(&pool, &user.id, &item_id)).await {
+        Ok(pairs) => {
+            Json(pairs.into_iter().map(|(id, name)| serde_json::json!({"id": id, "name": name})).collect::<Vec<_>>())
+                .into_response()
+        }
         Err(resp) => resp,
     }
 }

@@ -37,8 +37,8 @@ pub fn routes() -> Router<SharedState> {
         .route("/items", get(list_items))
         .route("/movies", get(list_movies))
         .route("/shows", get(list_shows))
-        .route("/shows/{id}", get(get_show))
-        .route("/items/{id}", get(get_item))
+        .route("/shows/{id}", get(get_show).delete(delete_show))
+        .route("/items/{id}", get(get_item).delete(delete_item))
         .route("/logs", get(logs))
         .route("/scan", post(rescan))
 }
@@ -246,4 +246,50 @@ fn read_log_tail(dir: &std::path::Path, tail: usize) -> String {
     let lines: Vec<&str> = content.lines().collect();
     let start = lines.len().saturating_sub(tail);
     lines[start..].join("\n")
+}
+
+/// `DELETE /api/items/:id` (Bearer) → 204. Removes the item from DB and deletes
+/// its file(s) from disk. Also removes the parent directory if empty.
+pub async fn delete_item(
+    State(state): State<SharedState>,
+    AuthUser(_user): AuthUser,
+    Path(id): Path<String>,
+) -> Result<Response, Response> {
+    let paths = query(&state.db, move |pool| db::delete_item_with_paths(&pool, &id)).await?;
+    remove_files_from_disk(&paths);
+    Ok(StatusCode::NO_CONTENT.into_response())
+}
+
+/// `DELETE /api/shows/:id` (Bearer) → 204. Removes the show and all its episodes
+/// from DB and deletes their file(s) from disk.
+pub async fn delete_show(
+    State(state): State<SharedState>,
+    AuthUser(_user): AuthUser,
+    Path(id): Path<String>,
+) -> Result<Response, Response> {
+    let paths = query(&state.db, move |pool| db::delete_show_with_paths(&pool, &id)).await?;
+    remove_files_from_disk(&paths);
+    Ok(StatusCode::NO_CONTENT.into_response())
+}
+
+fn remove_files_from_disk(paths: &[String]) {
+    for p in paths {
+        if p.is_empty() {
+            continue;
+        }
+        let path = std::path::Path::new(p);
+        if path.exists() {
+            if let Err(e) = std::fs::remove_file(path) {
+                tracing::warn!(path = %p, error = %e, "failed to delete media file");
+            } else {
+                tracing::info!(path = %p, "deleted media file");
+            }
+        }
+        // Remove parent directory if now empty (e.g. "Toy Story 5 (2026)/")
+        if let Some(parent) = path.parent() {
+            if parent.is_dir() && std::fs::read_dir(parent).map(|mut d| d.next().is_none()).unwrap_or(false) {
+                let _ = std::fs::remove_dir(parent);
+            }
+        }
+    }
 }

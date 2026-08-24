@@ -221,6 +221,26 @@ pub(crate) const SCHEMA: &str = "
     );
     CREATE INDEX IF NOT EXISTS idx_watch_later_user ON watch_later(user_id, added_at DESC);
 
+    -- Custom named lists: user-created collections of titles. A list has a
+    -- user-chosen name and optional icon; entries are movie item ids or show
+    -- ids (same no-items-FK rationale as watched/my_list/watch_later).
+    CREATE TABLE IF NOT EXISTS custom_lists (
+        id         TEXT PRIMARY KEY,
+        user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        name       TEXT NOT NULL,
+        icon       TEXT,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_custom_lists_user ON custom_lists(user_id, sort_order);
+    CREATE TABLE IF NOT EXISTS custom_list_entries (
+        list_id    TEXT NOT NULL REFERENCES custom_lists(id) ON DELETE CASCADE,
+        item_id    TEXT NOT NULL,
+        added_at   TEXT NOT NULL,
+        PRIMARY KEY (list_id, item_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_custom_list_entries_list ON custom_list_entries(list_id, added_at DESC);
+
     CREATE TABLE IF NOT EXISTS settings (
         key        TEXT PRIMARY KEY,
         value      TEXT NOT NULL,

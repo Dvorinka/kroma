@@ -147,7 +147,7 @@ export function Poster({
                 variant={inQueue ? 'primary' : 'scrim'}
                 diameter={28}
                 glyph={15}
-                icon={inQueue ? 'bookmark-filled' : 'bookmark'}
+                icon={inQueue ? 'clock-filled' : 'clock'}
                 label={inQueue ? t('discover.inWatchLater') : t('discover.watchLater')}
                 onPress={() => onToggleQueue?.()}
               />

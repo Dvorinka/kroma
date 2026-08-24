@@ -3,6 +3,7 @@
 // here (mounted by the authenticated `_app` layout) lets every call site drop
 // its `useState(open)` + conditional render in favour of `await Modal.call(props)`.
 
+import { CustomListDialog } from '#web/features/catalog/custom-list-dialog';
 import { RematchDialog } from '#web/features/catalog/rematch-dialog';
 import { ReportDialog } from '#web/features/catalog/report-dialog';
 import { MediaInfoModal } from '#web/shared/ui/media-info-modal';
@@ -13,6 +14,7 @@ export function CatalogModalHosts() {
       <MediaInfoModal />
       <RematchDialog />
       <ReportDialog />
+      <CustomListDialog />
     </>
   );
 }

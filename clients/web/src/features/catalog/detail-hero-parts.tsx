@@ -93,7 +93,7 @@ export function WatchLaterButton({
       glyph={20}
       radius="md"
       active={inQueue ?? false}
-      icon={inQueue ? 'bookmark-filled' : 'bookmark'}
+      icon={inQueue ? 'clock-filled' : 'clock'}
       label={inQueue ? t('discover.inWatchLater') : t('discover.watchLater')}
       onPress={onToggle}
     />
@@ -111,6 +111,36 @@ export function ReportButton({ onReport }: Readonly<{ onReport?: () => void }>) 
       icon="flag"
       label={t('report.action')}
       onPress={onReport}
+    />
+  );
+}
+
+export function DeleteButton({ onDelete }: Readonly<{ onDelete?: () => void }>) {
+  const t = useT();
+  if (!onDelete) return null;
+  return (
+    <IconButton
+      diameter={50}
+      glyph={19}
+      radius="md"
+      icon="trash"
+      label={t('content.delete')}
+      onPress={onDelete}
+    />
+  );
+}
+
+export function AddToListButton({ onAddToList }: Readonly<{ onAddToList?: () => void }>) {
+  const t = useT();
+  if (!onAddToList) return null;
+  return (
+    <IconButton
+      diameter={50}
+      glyph={20}
+      radius="md"
+      icon="list"
+      label={t('content.addToCustomList')}
+      onPress={onAddToList}
     />
   );
 }

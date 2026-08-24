@@ -61,6 +61,16 @@ export function item(ctx: RequestContext, id: string): Promise<MediaItem> {
   return ctx.json<MediaItem>(`/items/${encodeURIComponent(id)}`);
 }
 
+/** Delete a movie/episode from the library: removes DB row + file from disk. */
+export async function deleteItem(ctx: RequestContext, id: string): Promise<void> {
+  await ctx.json<void>(`/items/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}
+
+/** Delete a show and all its episodes from the library: removes DB rows + files. */
+export async function deleteShow(ctx: RequestContext, id: string): Promise<void> {
+  await ctx.json<void>(`/shows/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}
+
 /** "More like this": content-embedding neighbours of a title (public). */
 export function similar(ctx: RequestContext, id: string): Promise<MediaItem[]> {
   return ctx.json<MediaItem[]>(`/items/${encodeURIComponent(id)}/similar`);
