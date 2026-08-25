@@ -18,7 +18,6 @@ import {
   DeleteButton,
   DirectorsLine,
   HeroFields,
-  ListButton,
   ReportButton,
   WatchedButton,
   WatchLaterButton,
@@ -95,8 +94,6 @@ export interface DetailHeroProps {
   castItemId?: ItemId;
   watched?: boolean;
   onToggleWatched?: () => void;
-  inList?: boolean;
-  onToggleList?: () => void;
   inQueue?: boolean;
   onToggleQueue?: () => void;
   playable?: MediaItem | null;
@@ -129,8 +126,6 @@ export function DetailHero({
   castItemId,
   watched,
   onToggleWatched,
-  inList,
-  onToggleList,
   inQueue,
   onToggleQueue,
   playable,
@@ -239,7 +234,6 @@ export function DetailHero({
                 ) : null)}
               {castItemId ? <CastButton itemId={castItemId} /> : null}
               <WatchedButton watched={watched} onToggle={onToggleWatched} />
-              <ListButton inList={inList} onToggle={onToggleList} />
               <WatchLaterButton inQueue={inQueue} onToggle={onToggleQueue} />
               <ReportButton onReport={onReport} />
               <DeleteButton onDelete={onDelete} />

@@ -2,7 +2,7 @@
 
 import type { ItemId } from '@kroma/core';
 import { useCast, useT } from '@kroma/ui';
-import { Text } from '@kroma/ui/kit';
+import { confirm, Text } from '@kroma/ui/kit';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import type { CSSProperties } from 'react';
@@ -16,7 +16,6 @@ import { useTitleRequest } from '#web/features/catalog/use-title-request';
 import { QualityPrefDialog } from '#web/features/requests/quality-pref-dialog';
 import { kromaClient } from '#web/shared/lib/api';
 import { useAuth } from '#web/shared/lib/auth';
-import { useMyList } from '#web/shared/lib/mylist';
 import { userQueries } from '#web/shared/lib/queries';
 import type { TitleView } from '#web/shared/lib/titleView';
 import { useWatchLater } from '#web/shared/lib/watch-later';
@@ -152,7 +151,6 @@ export function TitleDetail({ initial }: Readonly<{ initial: TitleView }>) {
     closeQualityDialog,
   } = useTitleRequest(initial);
   const { isWatched, toggleWatched } = useWatched();
-  const { inList, toggle: toggleList } = useMyList();
   const { inQueue, toggle: toggleQueue } = useWatchLater();
 
   const owned = view.localId != null && view.playable != null;
@@ -195,7 +193,13 @@ export function TitleDetail({ initial }: Readonly<{ initial: TitleView }>) {
 
   const handleDelete = async () => {
     if (!localId) return;
-    const ok = window.confirm(t('content.deleteConfirm', { title: view.title }));
+    const ok = await confirm({
+      title: t('content.delete'),
+      message: t('content.deleteConfirm', { title: view.title }),
+      confirmLabel: t('content.delete'),
+      cancelLabel: t('common.cancel'),
+      destructive: true,
+    });
     if (!ok) return;
     try {
       if (view.kind === 'show') {
@@ -232,8 +236,6 @@ export function TitleDetail({ initial }: Readonly<{ initial: TitleView }>) {
         overline={overline}
         isWatched={isWatched}
         toggleWatched={toggleWatched}
-        inList={inList}
-        toggleList={toggleList}
         inQueue={inQueue}
         toggleQueue={toggleQueue}
         onPlay={play}

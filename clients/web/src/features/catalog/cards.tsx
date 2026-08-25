@@ -6,7 +6,6 @@ import { type CSSProperties, memo } from 'react';
 import { TileGrid } from '#web/features/catalog/tile-grid';
 import type { MovieView, ShowView } from '#web/shared/lib/api';
 import { useAuth } from '#web/shared/lib/auth';
-import { useMyList } from '#web/shared/lib/mylist';
 import type { HeroEntry } from '#web/shared/lib/queries';
 import { useWatchLater } from '#web/shared/lib/watch-later';
 import { useWatched } from '#web/shared/lib/watched';
@@ -154,7 +153,6 @@ export const MoviePoster = memo(function MoviePoster({
   const t = useT();
   const navigate = useNavigate();
   const { isWatched, toggleWatched } = useWatched();
-  const { inList, toggle: toggleList } = useMyList();
   const { inQueue, toggle: toggleQueue } = useWatchLater();
   return (
     <Poster
@@ -165,8 +163,7 @@ export const MoviePoster = memo(function MoviePoster({
       width={width}
       watched={isWatched(item.id)}
       onToggleWatched={() => toggleWatched(item.id)}
-      inList={inList(item.id)}
-      onToggleList={() => toggleList(item.id)}
+      itemId={item.id}
       inQueue={inQueue(item.id)}
       onToggleQueue={() => toggleQueue(item.id)}
       onClick={() => navigate({ to: '/movie/$id', params: { id: item.id } })}
@@ -181,7 +178,6 @@ export const ShowPoster = memo(function ShowPoster({
   const t = useT();
   const navigate = useNavigate();
   const { isWatched, toggleWatched } = useWatched();
-  const { inList, toggle: toggleList } = useMyList();
   const { inQueue, toggle: toggleQueue } = useWatchLater();
   return (
     <Poster
@@ -193,8 +189,7 @@ export const ShowPoster = memo(function ShowPoster({
       progress={show.progress ?? null}
       watched={isWatched(show.id)}
       onToggleWatched={() => toggleWatched(show.id)}
-      inList={inList(show.id)}
-      onToggleList={() => toggleList(show.id)}
+      itemId={show.id}
       inQueue={inQueue(show.id)}
       onToggleQueue={() => toggleQueue(show.id)}
       onClick={() => navigate({ to: '/show/$id', params: { id: show.id } })}
@@ -214,7 +209,6 @@ export const SectionPoster = memo(function SectionPoster({
   const navigate = useNavigate();
   const { client } = useAuth();
   const { isWatched, toggleWatched } = useWatched();
-  const { inList, toggle: toggleList } = useMyList();
   const { inQueue, toggle: toggleQueue } = useWatchLater();
   if (entry.type === 'show') {
     const { show } = entry;
@@ -228,8 +222,7 @@ export const SectionPoster = memo(function SectionPoster({
         progress={show.progress ?? null}
         watched={isWatched(show.id)}
         onToggleWatched={() => toggleWatched(show.id)}
-        inList={inList(show.id)}
-        onToggleList={() => toggleList(show.id)}
+        itemId={show.id}
         inQueue={inQueue(show.id)}
         onToggleQueue={() => toggleQueue(show.id)}
         onClick={() => navigate({ to: '/show/$id', params: { id: show.id } })}
@@ -247,8 +240,7 @@ export const SectionPoster = memo(function SectionPoster({
       width={width}
       watched={isWatched(item.id)}
       onToggleWatched={() => toggleWatched(item.id)}
-      inList={inList(item.id)}
-      onToggleList={() => toggleList(item.id)}
+      itemId={item.id}
       inQueue={inQueue(item.id)}
       onToggleQueue={() => toggleQueue(item.id)}
       onClick={() =>

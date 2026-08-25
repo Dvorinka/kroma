@@ -21,8 +21,6 @@ export function TitleHero({
   overline,
   isWatched,
   toggleWatched,
-  inList,
-  toggleList,
   inQueue,
   toggleQueue,
   onPlay,
@@ -38,8 +36,6 @@ export function TitleHero({
   overline: string;
   isWatched: (id: string) => boolean;
   toggleWatched: (id: string) => void;
-  inList: (id: string) => boolean;
-  toggleList: (id: string) => void;
   inQueue: (id: string) => boolean;
   toggleQueue: (id: string) => void;
   onPlay: (id: string) => void;
@@ -58,16 +54,12 @@ export function TitleHero({
   const listState: {
     watched?: boolean;
     onToggleWatched?: () => void;
-    inList?: boolean;
-    onToggleList?: () => void;
     inQueue?: boolean;
     onToggleQueue?: () => void;
   } = {};
   if (queueId) {
     listState.watched = isWatched(queueId);
     listState.onToggleWatched = () => toggleWatched(queueId);
-    listState.inList = inList(queueId);
-    listState.onToggleList = () => toggleList(queueId);
     listState.inQueue = inQueue(queueId);
     listState.onToggleQueue = () => toggleQueue(queueId);
   }
@@ -100,8 +92,6 @@ export function TitleHero({
       // in the library.
       castItemId={owned && localId ? (localId as ItemId) : undefined}
       onToggleWatched={listState.onToggleWatched}
-      inList={listState.inList}
-      onToggleList={listState.onToggleList}
       inQueue={listState.inQueue}
       onToggleQueue={listState.onToggleQueue}
       primaryAction={

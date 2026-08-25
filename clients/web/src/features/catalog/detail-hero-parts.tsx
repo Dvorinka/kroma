@@ -62,25 +62,6 @@ export function WatchedButton({
   );
 }
 
-export function ListButton({
-  inList,
-  onToggle,
-}: Readonly<{ inList?: boolean; onToggle?: () => void }>) {
-  const t = useT();
-  if (!onToggle) return null;
-  return (
-    <IconButton
-      diameter={50}
-      glyph={20}
-      radius="md"
-      active={inList ?? false}
-      icon={inList ? 'check' : 'plus'}
-      label={inList ? t('content.removeFromList') : t('content.addToList')}
-      onPress={onToggle}
-    />
-  );
-}
-
 export function WatchLaterButton({
   inQueue,
   onToggle,
@@ -138,7 +119,8 @@ export function AddToListButton({ onAddToList }: Readonly<{ onAddToList?: () => 
       diameter={50}
       glyph={20}
       radius="md"
-      icon="list"
+      variant="glass"
+      icon="plus"
       label={t('content.addToCustomList')}
       onPress={onAddToList}
     />

@@ -2,6 +2,7 @@ import { sizedImageUrl } from '@kroma/core';
 import { useT } from '@kroma/ui';
 import { ArtScrim, Box, Ground, IconButton, Progress, Text, VirtualRail } from '@kroma/ui/kit';
 import { type ReactElement, useState } from 'react';
+import { CustomListDialog } from '#web/features/catalog/custom-list-dialog';
 import { Image } from '#web/shared/ui/image';
 
 export interface PosterProps {
@@ -12,8 +13,7 @@ export interface PosterProps {
   progress?: number | null;
   watched?: boolean | null;
   onToggleWatched?: () => void;
-  inList?: boolean | null;
-  onToggleList?: () => void;
+  itemId?: string | null;
   inQueue?: boolean | null;
   onToggleQueue?: () => void;
   width?: number;
@@ -67,8 +67,7 @@ export function Poster({
   progress = null,
   watched = null,
   onToggleWatched,
-  inList = null,
-  onToggleList,
+  itemId = null,
   inQueue = null,
   onToggleQueue,
   width,
@@ -79,12 +78,10 @@ export function Poster({
   const showImg = Boolean(poster) && imgOk;
   const gradient = `linear-gradient(158deg, ${colors[0]} 0%, ${colors[1]} 70%)`;
   const showWatched = watched != null && Boolean(onToggleWatched);
-  const showList = inList != null && Boolean(onToggleList);
+  const showList = itemId != null;
   const showQueue = inQueue != null && Boolean(onToggleQueue);
   const hasActions = showWatched || showList || showQueue;
-  // At least one action is active — keep the stack visible so the user sees
-  // their state without hovering.
-  const anyActive = Boolean(watched) || Boolean(inList) || Boolean(inQueue);
+  const anyActive = Boolean(watched) || Boolean(inQueue);
 
   return (
     <div style={{ width: width ?? 'var(--card-w)' }} className="poster-tile">
@@ -134,12 +131,12 @@ export function Poster({
             ) : null}
             {showList ? (
               <IconButton
-                variant={inList ? 'primary' : 'scrim'}
+                variant="scrim"
                 diameter={28}
                 glyph={15}
-                icon={inList ? 'check' : 'plus'}
-                label={inList ? t('content.removeFromList') : t('discover.addToMyList')}
-                onPress={() => onToggleList?.()}
+                icon="plus"
+                label={t('content.addToCustomList')}
+                onPress={() => void CustomListDialog.call({ itemId: itemId ?? '' })}
               />
             ) : null}
             {showQueue ? (

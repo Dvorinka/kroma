@@ -22,7 +22,6 @@ import { useNavigate } from '@tanstack/react-router';
 import { type CSSProperties, type ReactNode, useState } from 'react';
 import { CustomListDialog } from '#web/features/catalog/custom-list-dialog';
 import { useAuth } from '#web/shared/lib/auth';
-import { useMyList } from '#web/shared/lib/mylist';
 import { useWatchLater } from '#web/shared/lib/watch-later';
 import { useWatched } from '#web/shared/lib/watched';
 import { RequestStatusChip } from '#web/shared/ui/request-status-chip';
@@ -48,7 +47,6 @@ export function DiscoverCard({ entry, width }: Readonly<{ entry: DiscoverEntry; 
   const navigate = useNavigate();
   const { client } = useAuth();
   const { isWatched, toggleWatched } = useWatched();
-  const { inList, toggle: toggleMyList } = useMyList();
   const { inQueue, toggle: toggleWatchLater } = useWatchLater();
   const [imgOk, setImgOk] = useState(true);
   const [requesting, setRequesting] = useState(false);
@@ -217,16 +215,12 @@ export function DiscoverCard({ entry, width }: Readonly<{ entry: DiscoverEntry; 
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    toggleMyList(listId);
+                    void CustomListDialog.call({ itemId: listId });
                   }}
-                  aria-label={t('discover.addToMyList')}
+                  aria-label={t('content.addToCustomList')}
                   style={QUICK_ACTION_BTN}
                 >
-                  <Icon
-                    name={inList(listId) ? 'check' : 'plus'}
-                    size={16}
-                    color={inList(listId) ? 'accent' : 'white'}
-                  />
+                  <Icon name="plus" size={16} color="white" />
                 </button>
                 <button
                   type="button"
@@ -242,17 +236,6 @@ export function DiscoverCard({ entry, width }: Readonly<{ entry: DiscoverEntry; 
                     size={16}
                     color={inQueue(listId) ? 'accent' : 'white'}
                   />
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    void CustomListDialog.call({ itemId: listId });
-                  }}
-                  aria-label={t('content.addToCustomList')}
-                  style={QUICK_ACTION_BTN}
-                >
-                  <Icon name="list" size={16} color="white" />
                 </button>
               </div>
             </Box>
