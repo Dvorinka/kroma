@@ -1,30 +1,35 @@
-import {
-  type DiscoverDetail,
-  type DiscoverEntry,
-  ItemId,
-  type MessageKey,
-  ShowId,
-} from '@kroma/core';
+import type { CustomListEntry, MessageKey } from '@kroma/core';
 import { useT } from '@kroma/ui';
-import { Box, EmptyState, PageHeader, Row, SegmentGroup, Select } from '@kroma/ui/kit';
+import { Box, PageHeader, Row, SegmentGroup, Select, Text } from '@kroma/ui/kit';
 
 import { useQueries, useSuspenseQuery } from '@tanstack/react-query';
-import { createFileRoute } from '@tanstack/react-router';
-import { useMemo, useState } from 'react';
-import { type CatalogEntry, MoviePoster, ShowPoster } from '#web/features/catalog/cards';
+import { createFileRoute, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
+import { type CSSProperties, useMemo, useState } from 'react';
 import { TileGrid } from '#web/features/catalog/tile-grid';
-import { DiscoverCard } from '#web/features/requests/discover-card';
-import { isAuthed, kromaClient, type MovieView, type ShowView } from '#web/shared/lib/api';
+import { isAuthed } from '#web/shared/lib/api';
+import { useCustomLists } from '#web/shared/lib/custom-lists';
+import {
+  type DecadeFilter,
+  filterByDecade,
+  filterByKind,
+  type KindFilter,
+  postersForList,
+  type ResolvedList,
+  type Sort,
+  sortEntries,
+  type UnifiedEntry,
+  useDiscoverEntries,
+  useResolvedList,
+} from '#web/shared/lib/list-utils';
 import { useMyList } from '#web/shared/lib/mylist';
 import { catalogQueries } from '#web/shared/lib/queries';
 import { useWatchLater } from '#web/shared/lib/watch-later';
 import { useWatched } from '#web/shared/lib/watched';
-import { PAGE_MAIN, SkeletonRow } from '#web/shared/ui';
+import { Image, PAGE_MAIN, SkeletonRow } from '#web/shared/ui';
 
-type Tab = 'mylist' | 'watchlater' | 'watched';
-type Sort = 'title' | 'year' | 'rating' | 'recent';
-type KindFilter = 'all' | 'movie' | 'show';
-type DecadeFilter = 'all' | '2020s' | '2010s' | '2000s' | '1990s' | 'older';
+type BuiltinTab = 'mylist' | 'watchlater' | 'watched';
+
+const BUILTIN_TABS: readonly BuiltinTab[] = ['mylist', 'watchlater', 'watched'];
 
 export const Route = createFileRoute('/_app/mylist')({
   loader: async ({ context: { queryClient } }) => {
@@ -52,182 +57,6 @@ function MyListPending() {
   );
 }
 
-function splitIds(ids: readonly string[]): { local: string[]; tmdb: number[] } {
-  const local: string[] = [];
-  const tmdb: number[] = [];
-  for (const id of ids) {
-    if (id.startsWith('tmdb:')) {
-      const num = Number(id.slice(5));
-      if (!Number.isNaN(num)) tmdb.push(num);
-    } else {
-      local.push(id);
-    }
-  }
-  return { local, tmdb };
-}
-
-async function fetchDiscoverEntry(id: number): Promise<DiscoverEntry> {
-  const client = kromaClient();
-  try {
-    return discoverEntryFromDetail(await client.discoverDetail('movie', id));
-  } catch {
-    return discoverEntryFromDetail(await client.discoverDetail('tv', id));
-  }
-}
-
-function discoverEntryFromDetail(d: DiscoverDetail): DiscoverEntry {
-  return {
-    kind: d.kind,
-    tmdbId: d.tmdbId,
-    title: d.title,
-    year: d.year,
-    posterUrl: d.posterUrl,
-    backdropUrl: d.backdropUrl,
-    overview: d.overview,
-    rating: d.rating,
-    inLibrary: d.inLibrary,
-    localId: d.localId,
-    requestId: d.requestId,
-    requestStatus: d.requestStatus,
-    requestProgress: d.requestProgress,
-  };
-}
-
-function useDiscoverEntries(ids: number[]): { entries: DiscoverEntry[]; loading: boolean } {
-  const queries = useQueries({
-    queries: ids.map((id) => ({
-      queryKey: ['discover', 'entry', id] as const,
-      queryFn: () => fetchDiscoverEntry(id),
-      retry: 1,
-    })),
-  });
-  const entries: DiscoverEntry[] = [];
-  let loading = false;
-  for (const q of queries) {
-    if (q.isLoading) {
-      loading = true;
-      continue;
-    }
-    if (q.data) entries.push(q.data);
-  }
-  return { entries, loading };
-}
-
-interface UnifiedEntry {
-  key: string;
-  kind: 'movie' | 'show';
-  title: string;
-  year: number | null;
-  rating: number | null;
-  addedAt: string | null;
-  render: (width: number) => React.ReactNode;
-}
-
-function toUnifiedLocal(entries: CatalogEntry[]): UnifiedEntry[] {
-  return entries.map((e) => {
-    if (e.kind === 'movie') {
-      return {
-        key: e.movie.id,
-        kind: 'movie' as const,
-        title: e.movie.title,
-        year: e.movie.year ?? null,
-        rating: e.movie.metadata?.rating ?? null,
-        addedAt: e.movie.addedAt ?? null,
-        render: (width: number) => <MoviePoster item={e.movie} width={width} />,
-      };
-    }
-    return {
-      key: e.show.id,
-      kind: 'show' as const,
-      title: e.show.title,
-      year: e.show.year ?? null,
-      rating: e.show.metadata?.rating ?? null,
-      addedAt: e.show.addedAt ?? null,
-      render: (width: number) => <ShowPoster show={e.show} width={width} />,
-    };
-  });
-}
-
-function toUnifiedDiscover(entries: DiscoverEntry[]): UnifiedEntry[] {
-  return entries.map((e) => ({
-    key: `tmdb:${e.tmdbId}`,
-    kind: e.kind,
-    title: e.title,
-    year: e.year,
-    rating: e.rating,
-    addedAt: null,
-    render: (width: number) => <DiscoverCard entry={e} width={width} />,
-  }));
-}
-
-function sortEntries(entries: UnifiedEntry[], sort: Sort): UnifiedEntry[] {
-  const sorted = [...entries];
-  if (sort === 'title') {
-    sorted.sort((a, b) => a.title.localeCompare(b.title));
-  } else if (sort === 'year') {
-    sorted.sort((a, b) => (b.year ?? 0) - (a.year ?? 0));
-  } else if (sort === 'rating') {
-    sorted.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
-  } else if (sort === 'recent') {
-    sorted.sort((a, b) => (b.addedAt ?? '').localeCompare(a.addedAt ?? ''));
-  }
-  return sorted;
-}
-
-function filterByKind(entries: UnifiedEntry[], filter: KindFilter): UnifiedEntry[] {
-  if (filter === 'all') return entries;
-  return entries.filter((e) => e.kind === filter);
-}
-
-function filterByDecade(entries: UnifiedEntry[], decade: DecadeFilter): UnifiedEntry[] {
-  if (decade === 'all') return entries;
-  return entries.filter((e) => {
-    const y = e.year;
-    if (y == null) return false;
-    if (decade === '2020s') return y >= 2020;
-    if (decade === '2010s') return y >= 2010 && y < 2020;
-    if (decade === '2000s') return y >= 2000 && y < 2010;
-    if (decade === '1990s') return y >= 1990 && y < 2000;
-    if (decade === 'older') return y < 1990;
-    return true;
-  });
-}
-
-interface ResolvedList {
-  entries: UnifiedEntry[];
-  loading: boolean;
-  total: number;
-  ready: boolean;
-}
-
-function useResolvedList(
-  ids: readonly string[],
-  ready: boolean,
-  movieById: Map<string, MovieView>,
-  showById: Map<string, ShowView>,
-): ResolvedList {
-  const split = useMemo(() => splitIds(ids), [ids]);
-  const local = useMemo(() => {
-    const out: CatalogEntry[] = [];
-    for (const id of split.local) {
-      const movie = movieById.get(ItemId.of(id));
-      if (movie) {
-        out.push({ kind: 'movie', movie });
-        continue;
-      }
-      const show = showById.get(ShowId.of(id));
-      if (show) out.push({ kind: 'show', show });
-    }
-    return out;
-  }, [split.local, movieById, showById]);
-  const { entries, loading } = useDiscoverEntries(split.tmdb);
-  const unified = useMemo(
-    () => [...toUnifiedLocal(local), ...toUnifiedDiscover(entries)],
-    [local, entries],
-  );
-  return { entries: unified, loading, total: unified.length, ready };
-}
-
 function UnifiedGrid({ entries }: Readonly<{ entries: UnifiedEntry[] }>) {
   if (entries.length === 0) return null;
   return (
@@ -235,17 +64,24 @@ function UnifiedGrid({ entries }: Readonly<{ entries: UnifiedEntry[] }>) {
   );
 }
 
-function ListContent({ list, emptyKey }: Readonly<{ list: ResolvedList; emptyKey: MessageKey }>) {
+function ListContent({
+  list,
+  emptyKey,
+  suppressEmpty,
+}: Readonly<{ list: ResolvedList; emptyKey: MessageKey; suppressEmpty?: boolean }>) {
   const t = useT();
   const [sort, setSort] = useState<Sort>('title');
   const [kindFilter, setKindFilter] = useState<KindFilter>('all');
   const [decadeFilter, setDecadeFilter] = useState<DecadeFilter>('all');
 
   if (list.ready && !list.loading && list.total === 0) {
+    if (suppressEmpty) return null;
     return (
-      <EmptyState.Root icon="list-details">
-        <EmptyState.Title>{t(emptyKey)}</EmptyState.Title>
-      </EmptyState.Root>
+      <Box py={32} align="center" gap={8}>
+        <Text variant="body" color="textDim" style={{ textAlign: 'center' }}>
+          {t(emptyKey)}
+        </Text>
+      </Box>
     );
   }
   if (list.total === 0 && !list.ready) return null;
@@ -299,14 +135,136 @@ function ListContent({ list, emptyKey }: Readonly<{ list: ResolvedList; emptyKey
   );
 }
 
+/** Fetches all custom lists' entries in parallel, for preview thumbnails. */
+function useAllCustomListEntries(
+  listIds: readonly string[],
+  enabled: boolean,
+): Map<string, CustomListEntry[]> {
+  const { listEntries } = useCustomLists();
+  const queries = useQueries({
+    queries: listIds.map((id) => ({
+      queryKey: ['custom-list', 'entries', id] as const,
+      queryFn: () => listEntries(id),
+      enabled,
+      staleTime: 10_000,
+    })),
+  });
+  return useMemo(() => {
+    const map = new Map<string, CustomListEntry[]>();
+    for (let i = 0; i < listIds.length; i++) {
+      const id = listIds[i];
+      if (id) map.set(id, queries[i]?.data ?? []);
+    }
+    return map;
+  }, [listIds, queries]);
+}
+
+/** Resolves TMDB poster URLs for every tmdb: ID across all custom lists. */
+function useAllTmdbPosters(allEntries: Map<string, CustomListEntry[]>): Map<number, string> {
+  const tmdbIds = useMemo(() => {
+    const ids = new Set<number>();
+    for (const entries of allEntries.values()) {
+      for (const e of entries) {
+        if (e.item_id.startsWith('tmdb:')) {
+          const num = Number(e.item_id.slice(5));
+          if (!Number.isNaN(num)) ids.add(num);
+        }
+      }
+    }
+    return [...ids];
+  }, [allEntries]);
+  const { entries } = useDiscoverEntries(tmdbIds);
+  return useMemo(() => {
+    const map = new Map<number, string>();
+    for (const e of entries) {
+      if (e.posterUrl) map.set(e.tmdbId, e.posterUrl);
+    }
+    return map;
+  }, [entries]);
+}
+
+const CARD_STYLE: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 12,
+  cursor: 'pointer',
+  background: 'transparent',
+  border: 0,
+  padding: 0,
+  textAlign: 'left',
+  color: 'inherit',
+  font: 'inherit',
+  width: '100%',
+  transition: 'transform 200ms ease-out',
+};
+
+function CustomListCard({
+  name,
+  images,
+  count,
+  onClick,
+}: Readonly<{ name: string; images: (string | null)[]; count: number; onClick: () => void }>) {
+  const t = useT();
+  const posters = images.slice(0, 4);
+  while (posters.length < 4) posters.push(null);
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={CARD_STYLE}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = 'translateY(-3px)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = 'translateY(0)';
+      }}
+    >
+      <div
+        style={{
+          aspectRatio: '1 / 1',
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gridTemplateRows: '1fr 1fr',
+          borderRadius: 12,
+          overflow: 'hidden',
+        }}
+      >
+        {posters.map((url, i) => (
+          <div
+            key={url ?? `slot-${i}`}
+            style={{
+              position: 'relative',
+              overflow: 'hidden',
+              background: 'var(--kroma-surface2)',
+            }}
+          >
+            {url ? <Image src={url} fit="cover" fill /> : null}
+          </div>
+        ))}
+      </div>
+      <Box row align="center" justify="space-between" px={2}>
+        <Text variant="title" lines={1} style={{ fontSize: 15 }}>
+          {name}
+        </Text>
+        <Text variant="meta" color="textDim" shrink={0}>
+          {t('content.itemCount', { count })}
+        </Text>
+      </Box>
+    </button>
+  );
+}
+
 function MyListPage() {
   const t = useT();
-  const [tab, setTab] = useState<Tab>('mylist');
+  const navigate = useNavigate();
+  const [tab, setTab] = useState<BuiltinTab>('mylist');
   const { data: movies } = useSuspenseQuery(catalogQueries.moviesView());
   const { data: shows } = useSuspenseQuery(catalogQueries.showsView());
   const { ids: myListIds, ready: myListReady } = useMyList();
   const { ids: watchLaterIds, ready: watchLaterReady } = useWatchLater();
   const { ids: watchedIds, ready: watchedReady } = useWatched();
+  const { lists: customLists, ready: customListsReady } = useCustomLists();
 
   const movieById = useMemo(() => new Map(movies.map((m) => [m.id, m])), [movies]);
   const showById = useMemo(() => new Map(shows.map((s) => [s.id, s])), [shows]);
@@ -315,25 +273,33 @@ function MyListPage() {
   const watchLater = useResolvedList(watchLaterIds, watchLaterReady, movieById, showById);
   const watched = useResolvedList(watchedIds, watchedReady, movieById, showById);
 
-  const allEmpty =
-    myList.ready &&
-    !myList.loading &&
-    myList.total === 0 &&
-    watchLater.ready &&
-    !watchLater.loading &&
-    watchLater.total === 0 &&
-    watched.ready &&
-    !watched.loading &&
-    watched.total === 0;
+  const customListIds = useMemo(() => customLists.map((l) => l.id), [customLists]);
+  const allEntries = useAllCustomListEntries(customListIds, customListsReady);
+  const tmdbPosters = useAllTmdbPosters(allEntries);
 
-  const lists: Record<Tab, ResolvedList> = { mylist: myList, watchlater: watchLater, watched };
-  const active = lists[tab];
-  const emptyKeys: Record<Tab, MessageKey> = {
+  // If a child route (/mylist/list/$id) is active, render only the Outlet.
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  if (pathname.startsWith('/mylist/list/')) return <Outlet />;
+
+  const builtinLists: Record<BuiltinTab, ResolvedList> = {
+    mylist: myList,
+    watchlater: watchLater,
+    watched,
+  };
+
+  const active = builtinLists[tab];
+
+  const emptyKeys: Record<string, MessageKey> = {
     mylist: 'content.myListEmpty',
     watchlater: 'content.watchLaterEmpty',
     watched: 'content.watchedEmpty',
   };
-  const activeEmptyKey = emptyKeys[tab];
+
+  const builtinLabels: Record<BuiltinTab, string> = {
+    mylist: t('nav.myList'),
+    watchlater: t('discover.watchLater'),
+    watched: t('content.watched'),
+  };
 
   return (
     <main className={PAGE_MAIN}>
@@ -341,29 +307,49 @@ function MyListPage() {
         <PageHeader.Title>{t('nav.myList')}</PageHeader.Title>
       </PageHeader.Root>
 
-      {allEmpty ? (
-        <Box mt={24}>
-          <EmptyState.Root icon="list-details">
-            <EmptyState.Title>{t('content.myListEmpty')}</EmptyState.Title>
-          </EmptyState.Root>
-        </Box>
-      ) : (
-        <Box mt={24} gap={24}>
-          <SegmentGroup.Root<Tab> value={tab} onValueChange={setTab} size="sm" stretch>
-            <SegmentGroup.Item value="mylist">
-              <SegmentGroup.Label>{t('nav.myList')}</SegmentGroup.Label>
-            </SegmentGroup.Item>
-            <SegmentGroup.Item value="watchlater">
-              <SegmentGroup.Label>{t('discover.watchLater')}</SegmentGroup.Label>
-            </SegmentGroup.Item>
-            <SegmentGroup.Item value="watched">
-              <SegmentGroup.Label>{t('content.watched')}</SegmentGroup.Label>
-            </SegmentGroup.Item>
+      <Box mt={32} gap={40}>
+        <Box gap={16}>
+          <SegmentGroup.Root<BuiltinTab> value={tab} onValueChange={setTab} size="sm" stretch>
+            {BUILTIN_TABS.map((bt) => (
+              <SegmentGroup.Item key={bt} value={bt}>
+                <SegmentGroup.Label>{builtinLabels[bt]}</SegmentGroup.Label>
+              </SegmentGroup.Item>
+            ))}
           </SegmentGroup.Root>
 
-          <ListContent list={active} emptyKey={activeEmptyKey} />
+          {active.ready && !active.loading ? (
+            <ListContent
+              list={active}
+              emptyKey={emptyKeys[tab] ?? 'content.myListEmpty'}
+              suppressEmpty={tab === 'mylist' && customListsReady && customLists.length > 0}
+            />
+          ) : null}
         </Box>
-      )}
+
+        {tab === 'mylist' && customListsReady && customLists.length > 0 ? (
+          <Box gap={20}>
+            <Box row wrap gap={24}>
+              {customLists.map((cl) => {
+                const entries = allEntries.get(cl.id) ?? [];
+                const ids = entries.map((e) => e.item_id);
+                const images = postersForList(ids, movieById, showById, 4, tmdbPosters);
+                return (
+                  <Box key={cl.id} w={{ base: '100%', md: 220 }} shrink={0}>
+                    <CustomListCard
+                      name={cl.name}
+                      images={images}
+                      count={entries.length}
+                      onClick={() =>
+                        void navigate({ to: '/mylist/list/$id', params: { id: cl.id } })
+                      }
+                    />
+                  </Box>
+                );
+              })}
+            </Box>
+          </Box>
+        ) : null}
+      </Box>
     </main>
   );
 }
