@@ -1,6 +1,6 @@
 // Custom named lists: user-created collections, synced from the server.
 
-import type { CustomList } from '@kroma/core';
+import type { CustomList, CustomListEntry } from '@kroma/core';
 import {
   createContext,
   type ReactNode,
@@ -20,7 +20,11 @@ interface CustomListsValue {
   deleteList: (id: string) => Promise<void>;
   renameList: (id: string, name: string) => Promise<void>;
   toggleItem: (listId: string, itemId: string) => Promise<void>;
+  removeItem: (listId: string, itemId: string) => Promise<void>;
+  reorderList: (listId: string, itemIds: string[]) => Promise<void>;
+  setEntryNote: (listId: string, itemId: string, note: string) => Promise<void>;
   itemInList: (listId: string, itemId: string) => Promise<boolean>;
+  listEntries: (listId: string) => Promise<CustomListEntry[]>;
 }
 
 const CustomListsContext = createContext<CustomListsValue | null>(null);
@@ -78,7 +82,7 @@ export function CustomListsProvider({ children }: Readonly<{ children: ReactNode
   const toggleItem = useCallback(
     async (listId: string, itemId: string) => {
       const entries = await client.customListEntries(listId);
-      const inList = entries.includes(itemId);
+      const inList = entries.some((e) => e.item_id === itemId);
       if (inList) {
         await client.removeFromCustomList(listId, itemId);
       } else {
@@ -88,13 +92,36 @@ export function CustomListsProvider({ children }: Readonly<{ children: ReactNode
     [client],
   );
 
-  const itemInList = useCallback(
+  const removeItem = useCallback(
     async (listId: string, itemId: string) => {
-      const entries = await client.customListEntries(listId);
-      return entries.includes(itemId);
+      await client.removeFromCustomList(listId, itemId);
     },
     [client],
   );
+
+  const reorderList = useCallback(
+    async (listId: string, itemIds: string[]) => {
+      await client.reorderCustomList(listId, itemIds);
+    },
+    [client],
+  );
+
+  const setEntryNote = useCallback(
+    async (listId: string, itemId: string, note: string) => {
+      await client.setEntryNote(listId, itemId, note);
+    },
+    [client],
+  );
+
+  const itemInList = useCallback(
+    async (listId: string, itemId: string) => {
+      const entries = await client.customListEntries(listId);
+      return entries.some((e) => e.item_id === itemId);
+    },
+    [client],
+  );
+
+  const listEntries = useCallback((listId: string) => client.customListEntries(listId), [client]);
 
   const value = useMemo<CustomListsValue>(
     () => ({
@@ -105,9 +132,26 @@ export function CustomListsProvider({ children }: Readonly<{ children: ReactNode
       deleteList,
       renameList,
       toggleItem,
+      removeItem,
+      reorderList,
+      setEntryNote,
       itemInList,
+      listEntries,
     }),
-    [ready, lists, load, createList, deleteList, renameList, toggleItem, itemInList],
+    [
+      ready,
+      lists,
+      load,
+      createList,
+      deleteList,
+      renameList,
+      toggleItem,
+      removeItem,
+      reorderList,
+      setEntryNote,
+      itemInList,
+      listEntries,
+    ],
   );
 
   return <CustomListsContext.Provider value={value}>{children}</CustomListsContext.Provider>;
