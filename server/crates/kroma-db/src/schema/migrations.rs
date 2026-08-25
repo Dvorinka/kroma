@@ -151,4 +151,8 @@ pub(crate) const MIGRATIONS: &[&str] = &[
     "CREATE INDEX IF NOT EXISTS idx_custom_lists_user ON custom_lists(user_id, sort_order)",
     "CREATE TABLE IF NOT EXISTS custom_list_entries (list_id TEXT NOT NULL REFERENCES custom_lists(id) ON DELETE CASCADE, item_id TEXT NOT NULL, added_at TEXT NOT NULL, PRIMARY KEY (list_id, item_id))",
     "CREATE INDEX IF NOT EXISTS idx_custom_list_entries_list ON custom_list_entries(list_id, added_at DESC)",
+    // Custom list entries: add per-item note column.
+    "ALTER TABLE custom_list_entries ADD COLUMN note TEXT",
+    // Custom list entries: add position column for user-defined ordering.
+    "ALTER TABLE custom_list_entries ADD COLUMN position INTEGER",
 ];

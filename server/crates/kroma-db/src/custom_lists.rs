@@ -15,6 +15,14 @@ pub struct CustomList {
     pub created_at: String,
 }
 
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct CustomListEntry {
+    pub item_id: String,
+    pub note: Option<String>,
+    pub position: Option<i64>,
+    pub added_at: String,
+}
+
 pub fn create_list(pool: &Pool, user_id: &str, name: &str, icon: Option<&str>) -> Result<CustomList> {
     let conn = pool.get()?;
     let id = kroma_primitives::random_token();
@@ -94,6 +102,18 @@ pub fn add_to_custom_list(pool: &Pool, list_id: &str, item_id: &str) -> Result<(
     Ok(())
 }
 
+pub fn set_entry_note(pool: &Pool, list_id: &str, item_id: &str, note: Option<&str>) -> Result<()> {
+    let conn = pool.get()?;
+    let n = conn.execute(
+        "UPDATE custom_list_entries SET note = ?1 WHERE list_id = ?2 AND item_id = ?3",
+        params![note, list_id, item_id],
+    )?;
+    if n == 0 {
+        anyhow::bail!("entry not found");
+    }
+    Ok(())
+}
+
 pub fn remove_from_custom_list(pool: &Pool, list_id: &str, item_id: &str) -> Result<()> {
     let conn = pool.get()?;
     conn.execute(
@@ -103,13 +123,39 @@ pub fn remove_from_custom_list(pool: &Pool, list_id: &str, item_id: &str) -> Res
     Ok(())
 }
 
-pub fn list_custom_list_entries(pool: &Pool, list_id: &str) -> Result<Vec<String>> {
+pub fn list_custom_list_entries(pool: &Pool, list_id: &str) -> Result<Vec<CustomListEntry>> {
     let conn = pool.get()?;
     let mut stmt = conn.prepare(
-        "SELECT item_id FROM custom_list_entries WHERE list_id = ?1 ORDER BY added_at DESC",
+        "SELECT item_id, note, position, added_at FROM custom_list_entries \
+         WHERE list_id = ?1 ORDER BY position IS NULL, position ASC, added_at DESC",
     )?;
-    let rows = stmt.query_map(params![list_id], |r| r.get::<_, String>(0))?;
+    let rows = stmt.query_map(params![list_id], |r| {
+        Ok(CustomListEntry {
+            item_id: r.get(0)?,
+            note: r.get(1)?,
+            position: r.get(2)?,
+            added_at: r.get(3)?,
+        })
+    })?;
     Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
+}
+
+/// Sets positions for all entries in a list, persisting a user-defined order.
+pub fn reorder_custom_list_entries(
+    pool: &Pool,
+    list_id: &str,
+    item_ids: &[String],
+) -> Result<()> {
+    let mut conn = pool.get()?;
+    let tx = conn.transaction()?;
+    for (i, item_id) in item_ids.iter().enumerate() {
+        tx.execute(
+            "UPDATE custom_list_entries SET position = ?1 WHERE list_id = ?2 AND item_id = ?3",
+            params![i as i64, list_id, item_id],
+        )?;
+    }
+    tx.commit()?;
+    Ok(())
 }
 
 /// Every custom list id+name that contains this item, for the given user.
@@ -156,6 +202,12 @@ mod tests {
         add_to_custom_list(&pool, &list.id, "m1").unwrap(); // idempotent
         let entries = list_custom_list_entries(&pool, &list.id).unwrap();
         assert_eq!(entries.len(), 2);
+        assert_eq!(entries[0].item_id, "m1");
+
+        set_entry_note(&pool, &list.id, "m1", Some("Great movie")).unwrap();
+        let entries = list_custom_list_entries(&pool, &list.id).unwrap();
+        let m1 = entries.iter().find(|e| e.item_id == "m1").unwrap();
+        assert_eq!(m1.note.as_deref(), Some("Great movie"));
 
         let containing = lists_containing_item(&pool, &uid, "m1").unwrap();
         assert_eq!(containing.len(), 1);
@@ -196,5 +248,26 @@ mod tests {
         // Other user cannot rename or delete.
         assert!(rename_list(&pool, &other.id, &list.id, "Hacked").is_err());
         assert!(delete_list(&pool, &other.id, &list.id).is_err());
+    }
+
+    #[test]
+    fn reorder_entries_persists_position() {
+        let (pool, uid) = pool_with_user();
+        let list = create_list(&pool, &uid, "Ordered", None).unwrap();
+        add_to_custom_list(&pool, &list.id, "m1").unwrap();
+        add_to_custom_list(&pool, &list.id, "m2").unwrap();
+        add_to_custom_list(&pool, &list.id, "m3").unwrap();
+
+        // Before reorder: all positions NULL, ordered by added_at DESC → m3, m2, m1.
+        let before = list_custom_list_entries(&pool, &list.id).unwrap();
+        assert_eq!(before[0].item_id, "m3");
+        assert_eq!(before[2].item_id, "m1");
+
+        // Persist a custom order: m1, m2, m3.
+        reorder_custom_list_entries(&pool, &list.id, &["m1".into(), "m2".into(), "m3".into()]).unwrap();
+        let after = list_custom_list_entries(&pool, &list.id).unwrap();
+        assert_eq!(after[0].item_id, "m1");
+        assert_eq!(after[1].item_id, "m2");
+        assert_eq!(after[2].item_id, "m3");
     }
 }

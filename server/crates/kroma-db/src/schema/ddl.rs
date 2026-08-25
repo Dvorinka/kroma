@@ -236,6 +236,8 @@ pub(crate) const SCHEMA: &str = "
     CREATE TABLE IF NOT EXISTS custom_list_entries (
         list_id    TEXT NOT NULL REFERENCES custom_lists(id) ON DELETE CASCADE,
         item_id    TEXT NOT NULL,
+        note       TEXT,
+        position   INTEGER,
         added_at   TEXT NOT NULL,
         PRIMARY KEY (list_id, item_id)
     );

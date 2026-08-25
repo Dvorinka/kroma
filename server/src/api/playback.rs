@@ -43,6 +43,8 @@ pub fn routes() -> Router<SharedState> {
         .route("/custom-lists/{id}", delete(delete_custom_list).put(rename_custom_list))
         .route("/custom-lists/{id}/entries", get(list_custom_list_entries))
         .route("/custom-lists/{id}/entries/{itemId}", put(add_to_custom_list).delete(remove_from_custom_list))
+        .route("/custom-lists/{id}/entries/{itemId}/note", put(set_entry_note))
+        .route("/custom-lists/{id}/reorder", put(reorder_custom_list))
         .route("/custom-lists/item/{itemId}", get(lists_for_item))
         .route("/playback/ping", post(ping))
         .route("/playback/stop", post(stop))
@@ -460,14 +462,14 @@ pub async fn rename_custom_list(
     }
 }
 
-/// `GET /api/custom-lists/:id/entries` (Bearer) → `string[]`.
+/// `GET /api/custom-lists/:id/entries` (Bearer) → `CustomListEntry[]`.
 pub async fn list_custom_list_entries(
     State(state): State<SharedState>,
     AuthUser(_user): AuthUser,
     Path(id): Path<String>,
 ) -> Response {
     match query(&state.db, move |pool| db::list_custom_list_entries(&pool, &id)).await {
-        Ok(ids) => Json(ids).into_response(),
+        Ok(entries) => Json(entries).into_response(),
         Err(resp) => resp,
     }
 }
@@ -479,6 +481,30 @@ pub async fn add_to_custom_list(
     Path((id, item_id)): Path<(String, String)>,
 ) -> Response {
     match query(&state.db, move |pool| db::add_to_custom_list(&pool, &id, &item_id)).await {
+        Ok(()) => StatusCode::NO_CONTENT.into_response(),
+        Err(resp) => resp,
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SetNoteBody {
+    pub note: String,
+}
+
+/// `PUT /api/custom-lists/:id/entries/:itemId/note` (Bearer) → 204.
+pub async fn set_entry_note(
+    State(state): State<SharedState>,
+    AuthUser(_user): AuthUser,
+    Path((id, item_id)): Path<(String, String)>,
+    Json(body): Json<SetNoteBody>,
+) -> Response {
+    let note = body.note.trim().to_string();
+    let note_opt: Option<String> = if note.is_empty() { None } else { Some(note) };
+    match query(&state.db, move |pool| {
+        db::set_entry_note(&pool, &id, &item_id, note_opt.as_deref())
+    })
+    .await
+    {
         Ok(()) => StatusCode::NO_CONTENT.into_response(),
         Err(resp) => resp,
     }
@@ -507,6 +533,30 @@ pub async fn lists_for_item(
             Json(pairs.into_iter().map(|(id, name)| serde_json::json!({"id": id, "name": name})).collect::<Vec<_>>())
                 .into_response()
         }
+        Err(resp) => resp,
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ReorderBody {
+    #[serde(rename = "itemIds")]
+    pub item_ids: Vec<String>,
+}
+
+/// `PUT /api/custom-lists/:id/reorder` (Bearer) → 204. Persists a user-defined
+/// ordering for the list's entries.
+pub async fn reorder_custom_list(
+    State(state): State<SharedState>,
+    AuthUser(_user): AuthUser,
+    Path(id): Path<String>,
+    Json(body): Json<ReorderBody>,
+) -> Response {
+    match query(&state.db, move |pool| {
+        db::reorder_custom_list_entries(&pool, &id, &body.item_ids)
+    })
+    .await
+    {
+        Ok(()) => StatusCode::NO_CONTENT.into_response(),
         Err(resp) => resp,
     }
 }
