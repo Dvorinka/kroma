@@ -116,6 +116,13 @@ export interface CustomList {
   created_at: string;
 }
 
+export interface CustomListEntry {
+  item_id: string;
+  note: string | null;
+  position: number | null;
+  added_at: string;
+}
+
 /** All custom lists for the current user, ordered by sort_order. */
 export function customLists(ctx: RequestContext): Promise<CustomList[]> {
   return ctx.json<CustomList[]>('/custom-lists');
@@ -152,9 +159,9 @@ export async function renameCustomList(
   });
 }
 
-/** Item ids in a custom list (newest first). */
-export function customListEntries(ctx: RequestContext, listId: string): Promise<string[]> {
-  return ctx.json<string[]>(`/custom-lists/${encodeURIComponent(listId)}/entries`);
+/** Entries in a custom list (newest first), each with an optional note. */
+export function customListEntries(ctx: RequestContext, listId: string): Promise<CustomListEntry[]> {
+  return ctx.json<CustomListEntry[]>(`/custom-lists/${encodeURIComponent(listId)}/entries`);
 }
 
 /** Add a title to a custom list. */
@@ -169,6 +176,19 @@ export async function addToCustomList(
   );
 }
 
+/** Set or clear the note on a custom list entry. */
+export async function setEntryNote(
+  ctx: RequestContext,
+  listId: string,
+  itemId: string,
+  note: string,
+): Promise<void> {
+  await ctx.json<void>(
+    `/custom-lists/${encodeURIComponent(listId)}/entries/${encodeURIComponent(itemId)}/note`,
+    { method: 'PUT', headers: JSON_HEADERS, body: JSON.stringify({ note }) },
+  );
+}
+
 /** Remove a title from a custom list. */
 export async function removeFromCustomList(
   ctx: RequestContext,
@@ -179,6 +199,19 @@ export async function removeFromCustomList(
     `/custom-lists/${encodeURIComponent(listId)}/entries/${encodeURIComponent(itemId)}`,
     { method: 'DELETE' },
   );
+}
+
+/** Persist a user-defined ordering for a custom list's entries. */
+export async function reorderCustomList(
+  ctx: RequestContext,
+  listId: string,
+  itemIds: string[],
+): Promise<void> {
+  await ctx.json<void>(`/custom-lists/${encodeURIComponent(listId)}/reorder`, {
+    method: 'PUT',
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ itemIds }),
+  });
 }
 
 /** Which custom lists contain this item (for the popup). */

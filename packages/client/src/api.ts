@@ -595,14 +595,20 @@ export class KromaClient {
   renameCustomList(listId: string, name: string): Promise<void> {
     return playback.renameCustomList(this.ctx, listId, name);
   }
-  customListEntries(listId: string): Promise<string[]> {
+  customListEntries(listId: string): Promise<playback.CustomListEntry[]> {
     return playback.customListEntries(this.ctx, listId);
   }
   addToCustomList(listId: string, itemId: string): Promise<void> {
     return playback.addToCustomList(this.ctx, listId, itemId);
   }
+  setEntryNote(listId: string, itemId: string, note: string): Promise<void> {
+    return playback.setEntryNote(this.ctx, listId, itemId, note);
+  }
   removeFromCustomList(listId: string, itemId: string): Promise<void> {
     return playback.removeFromCustomList(this.ctx, listId, itemId);
+  }
+  reorderCustomList(listId: string, itemIds: string[]): Promise<void> {
+    return playback.reorderCustomList(this.ctx, listId, itemIds);
   }
   listsForItem(itemId: string): Promise<{ id: string; name: string }[]> {
     return playback.listsForItem(this.ctx, itemId);
@@ -947,4 +953,4 @@ export class KromaClient {
   }
 }
 
-export type { CustomList } from './client/playback';
+export type { CustomList, CustomListEntry } from './client/playback';
